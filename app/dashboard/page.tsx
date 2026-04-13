@@ -14,9 +14,21 @@ function generateConfig(apiKey: string, apiBase: string) {
 version: 1.0.0
 schema: v1
 models:
-  - name: NVIDIA Nemotron 9B (Free)
+  - name: GLM-4 32B — Code (Free)
     provider: openai
-    model: nvidia/nemotron-nano-9b-v2:free
+    model: thudm/glm-4-32b:free
+    apiBase: ${apiBase}/api/v1
+    apiKey: ${apiKey}
+
+  - name: GLM-4.5 Air — Agent (Free)
+    provider: openai
+    model: z-ai/glm-4.5-air:free
+    apiBase: ${apiBase}/api/v1
+    apiKey: ${apiKey}
+
+  - name: NVIDIA Nemotron 120B — Plan (Free)
+    provider: openai
+    model: nvidia/nemotron-3-super-120b-a12b:free
     apiBase: ${apiBase}/api/v1
     apiKey: ${apiKey}
 
@@ -26,9 +38,9 @@ models:
     apiBase: ${apiBase}/api/v1
     apiKey: ${apiKey}
 
-  - name: NVIDIA Nemotron 120B (Free)
+  - name: NVIDIA Nemotron 9B (Free)
     provider: openai
-    model: nvidia/nemotron-3-super-120b-a12b:free
+    model: nvidia/nemotron-nano-9b-v2:free
     apiBase: ${apiBase}/api/v1
     apiKey: ${apiKey}
 
@@ -41,6 +53,12 @@ models:
   - name: OpenAI GPT-OSS 120B (Free)
     provider: openai
     model: openai/gpt-oss-120b:free
+    apiBase: ${apiBase}/api/v1
+    apiKey: ${apiKey}
+
+  - name: GLM-5 — Best Coding (Paid)
+    provider: openai
+    model: z-ai/glm-5
     apiBase: ${apiBase}/api/v1
     apiKey: ${apiKey}
 
@@ -390,7 +408,7 @@ read -p "Press Enter to close..."
                   {copiedConfig ? 'Copied! Now paste in VS Code terminal (Cmd+V → Enter)' : 'Copy Setup Command'}
                 </button>
 
-                <p className="text-zinc-500 text-xs mt-2">This sets up all {`8`} models + your API key in one go.</p>
+                <p className="text-zinc-500 text-xs mt-2">This sets up all {`10`} models + your API key in one go.</p>
               </div>
             </div>
           </div>
