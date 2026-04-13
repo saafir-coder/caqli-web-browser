@@ -15,6 +15,6 @@ export async function GET() {
   return Response.json({
     paidCredits: credits?.balance ?? 0,
     freeUsedToday: usage?.message_count ?? 0,
-    freeDailyLimit: 50,
+    freeDailyLimit: 100,
   })
 }

@@ -107,7 +107,7 @@ supabase/
 ## Credit System
 
 - 1 credit = ~$0.01
-- Free tier: 50 messages/day, resets at UTC midnight
+- Free tier: 100 messages/day, resets at UTC midnight
 - Paid credits: purchased via Telegram contact, added manually by admin
 - Pricing defined in `lib/pricing.ts` (token rates with 2.5x markup)
 

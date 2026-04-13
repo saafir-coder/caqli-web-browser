@@ -8,7 +8,7 @@ const supabase = createClient(
   process.env.SUPABASE_SERVICE_ROLE_KEY!
 )
 
-const FREE_DAILY_LIMIT = 50
+const FREE_DAILY_LIMIT = 100
 
 export async function POST(req: NextRequest) {
   const authHeader = req.headers.get('authorization')

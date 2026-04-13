@@ -54,7 +54,7 @@ export default function LandingPage() {
             href="/login"
             className="bg-violet-600 hover:bg-violet-500 text-white font-semibold px-8 py-4 rounded-xl transition-colors text-lg"
           >
-            Start Free — 20 messages/day
+            Start Free — 100 messages/day
           </Link>
         </div>
 
@@ -67,7 +67,7 @@ export default function LandingPage() {
             },
             {
               title: 'Free Models',
-              desc: '20 messages/day free. No credit card. No Anthropic account.',
+              desc: '100 messages/day free. No credit card. No Anthropic account.',
             },
             {
               title: 'Paid = Claude',
