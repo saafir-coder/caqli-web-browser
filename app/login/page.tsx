@@ -91,7 +91,7 @@ export default function LoginPage() {
           </form>
 
           <p className="text-zinc-500 text-xs text-center mt-4">
-            {mode === 'signup' ? 'Free tier: 50 AI messages per day' : 'Welcome back'}
+            {mode === 'signup' ? 'Free tier: 100 AI messages per day' : 'Welcome back'}
           </p>
         </div>
       </div>
