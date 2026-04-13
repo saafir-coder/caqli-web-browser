@@ -1,5 +1,5 @@
 import { createClient } from '@/lib/supabase-server'
-import { streamFreeCompletion } from '@/lib/openrouter'
+import { streamFreeCompletion } from '@/lib/groq'
 import { streamPaidCompletion } from '@/lib/anthropic'
 import { NextRequest } from 'next/server'
 
@@ -8,7 +8,7 @@ You help users write, debug, and understand code. Be concise, practical, and cle
 When you see code in the message, analyze it carefully before responding.
 Always provide working code examples.`
 
-const FREE_DAILY_LIMIT = 20
+const FREE_DAILY_LIMIT = 100
 
 export async function POST(req: NextRequest) {
   const supabase = await createClient()

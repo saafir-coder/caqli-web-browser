@@ -1,6 +1,7 @@
 import { createClient } from '@supabase/supabase-js'
 import { NextRequest } from 'next/server'
 import { calculateCost, estimateMinCost } from '@/lib/pricing'
+import { fetchFreeCompletion } from '@/lib/groq'
 
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -61,28 +62,30 @@ export async function POST(req: NextRequest) {
     }
   }
 
-  // Forward to OpenRouter
-  const openRouterRes = await fetch('https://openrouter.ai/api/v1/chat/completions', {
-    method: 'POST',
-    headers: {
-      'Authorization': `Bearer ${process.env.OPENROUTER_API_KEY}`,
-      'Content-Type': 'application/json',
-      'HTTP-Referer': 'https://caqli.ai',
-      'X-Title': 'Caqli AI',
-    },
-    body: JSON.stringify({ ...body, model, stream: body.stream ?? false }),
-  })
+  // Route free models to Groq (multi-key load balanced), paid to Open Router
+  const upstreamRes = isFree
+    ? await fetchFreeCompletion({ ...body, stream: body.stream ?? false })
+    : await fetch('https://openrouter.ai/api/v1/chat/completions', {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${process.env.OPENROUTER_API_KEY}`,
+          'Content-Type': 'application/json',
+          'HTTP-Referer': 'https://caqli.ai',
+          'X-Title': 'Caqli AI',
+        },
+        body: JSON.stringify({ ...body, model, stream: body.stream ?? false }),
+      })
 
-  if (!openRouterRes.ok) {
-    const errText = await openRouterRes.text()
+  if (!upstreamRes.ok) {
+    const errText = await upstreamRes.text()
     return Response.json({
       error: { message: 'AI model error. Try again or switch models.', type: 'upstream_error', detail: errText }
-    }, { status: 502 })
+    }, { status: upstreamRes.status === 429 ? 429 : 502 })
   }
 
-  // Streaming: pass through, charge estimate upfront (refine later)
+  // Streaming — pass through
   if (body.stream) {
-    if (!openRouterRes.body) {
+    if (!upstreamRes.body) {
       return Response.json({ error: { message: 'No stream', type: 'upstream_error' } }, { status: 502 })
     }
 
@@ -93,7 +96,6 @@ export async function POST(req: NextRequest) {
         user_id: user.id, date: today, message_count: (usage?.message_count ?? 0) + 1,
       }, { onConflict: 'user_id,date' })
     } else {
-      // For streaming, charge estimate (avg ~2K tokens)
       const estCost = Math.max(1, estimateMinCost(model) * 3)
       const { data: credits } = await supabase.from('credits').select('balance').eq('user_id', user.id).single()
       await supabase.from('credits').update({
@@ -101,13 +103,13 @@ export async function POST(req: NextRequest) {
       }).eq('user_id', user.id)
     }
 
-    return new Response(openRouterRes.body, {
+    return new Response(upstreamRes.body, {
       headers: { 'Content-Type': 'text/event-stream', 'Cache-Control': 'no-cache' },
     })
   }
 
-  // Non-streaming: charge exact token count
-  const data = await openRouterRes.json()
+  // Non-streaming — charge exact token count
+  const data = await upstreamRes.json()
   const inputTokens = data.usage?.prompt_tokens ?? 0
   const outputTokens = data.usage?.completion_tokens ?? 0
 
