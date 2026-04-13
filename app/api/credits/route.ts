@@ -1,7 +1,7 @@
 import { createClient } from '@/lib/supabase-server'
 
 export async function GET() {
-  const supabase = createClient()
+  const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) return new Response('Unauthorized', { status: 401 })
 
@@ -15,6 +15,6 @@ export async function GET() {
   return Response.json({
     paidCredits: credits?.balance ?? 0,
     freeUsedToday: usage?.message_count ?? 0,
-    freeDailyLimit: 20,
+    freeDailyLimit: 50,
   })
 }

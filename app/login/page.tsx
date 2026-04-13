@@ -1,17 +1,13 @@
 'use client'
 import { useState } from 'react'
 import { createClient } from '@/lib/supabase'
-import { useRouter } from 'next/navigation'
 
 export default function LoginPage() {
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
-  const [name, setName] = useState('')
-  const [wantToBuild, setWantToBuild] = useState('')
   const [mode, setMode] = useState<'login' | 'signup'>('signup')
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
-  const router = useRouter()
   const supabase = createClient()
 
   async function handleSubmit(e: React.FormEvent) {
@@ -19,29 +15,26 @@ export default function LoginPage() {
     setLoading(true)
     setError('')
 
-    if (mode === 'signup') {
-      const { data, error: signUpError } = await supabase.auth.signUp({
-        email,
-        password,
-        options: {
-          data: { name, want_to_build: wantToBuild }
-        }
-      })
-      if (signUpError) { setError(signUpError.message); setLoading(false); return }
+    try {
+      if (mode === 'signup') {
+        const res = await fetch('/api/auth/signup', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ email, password }),
+        })
+        const data = await res.json()
+        if (!res.ok) { setError(data.error); setLoading(false); return }
 
-      // Update profile with extra fields
-      if (data.user) {
-        await supabase.from('profiles').update({
-          name,
-          want_to_build: wantToBuild,
-          source: 'youtube'
-        }).eq('id', data.user.id)
+        const { error } = await supabase.auth.signInWithPassword({ email, password })
+        if (error) { setError(error.message); setLoading(false); return }
+        window.location.href = '/dashboard'
+      } else {
+        const { error } = await supabase.auth.signInWithPassword({ email, password })
+        if (error) { setError(error.message); setLoading(false); return }
+        window.location.href = '/dashboard'
       }
-      router.push('/editor')
-    } else {
-      const { error: signInError } = await supabase.auth.signInWithPassword({ email, password })
-      if (signInError) { setError(signInError.message); setLoading(false); return }
-      router.push('/editor')
+    } catch {
+      setError('Something went wrong. Please try again.')
     }
     setLoading(false)
   }
@@ -59,11 +52,9 @@ export default function LoginPage() {
             {(['signup', 'login'] as const).map(m => (
               <button
                 key={m}
-                onClick={() => setMode(m)}
+                onClick={() => { setMode(m); setError('') }}
                 className={`flex-1 py-2 rounded-lg text-sm font-medium transition-colors ${
-                  mode === m
-                    ? 'bg-violet-600 text-white'
-                    : 'text-zinc-400 hover:text-white'
+                  mode === m ? 'bg-violet-600 text-white' : 'text-zinc-400 hover:text-white'
                 }`}
               >
                 {m === 'signup' ? 'Sign Up' : 'Log In'}
@@ -72,25 +63,6 @@ export default function LoginPage() {
           </div>
 
           <form onSubmit={handleSubmit} className="space-y-4">
-            {mode === 'signup' && (
-              <>
-                <input
-                  type="text"
-                  placeholder="Your name"
-                  value={name}
-                  onChange={e => setName(e.target.value)}
-                  className="w-full bg-zinc-800 border border-zinc-700 rounded-lg px-4 py-3 text-white placeholder-zinc-500 focus:outline-none focus:border-violet-500"
-                  required
-                />
-                <textarea
-                  placeholder="What do you want to build? (e.g. a mobile app, a website...)"
-                  value={wantToBuild}
-                  onChange={e => setWantToBuild(e.target.value)}
-                  rows={2}
-                  className="w-full bg-zinc-800 border border-zinc-700 rounded-lg px-4 py-3 text-white placeholder-zinc-500 focus:outline-none focus:border-violet-500 resize-none"
-                />
-              </>
-            )}
             <input
               type="email"
               placeholder="Email address"
@@ -101,7 +73,7 @@ export default function LoginPage() {
             />
             <input
               type="password"
-              placeholder="Password"
+              placeholder="Password (min 6 characters)"
               value={password}
               onChange={e => setPassword(e.target.value)}
               className="w-full bg-zinc-800 border border-zinc-700 rounded-lg px-4 py-3 text-white placeholder-zinc-500 focus:outline-none focus:border-violet-500"
@@ -118,11 +90,9 @@ export default function LoginPage() {
             </button>
           </form>
 
-          {mode === 'signup' && (
-            <p className="text-zinc-500 text-xs text-center mt-4">
-              Free tier: 20 messages/day with powerful AI models
-            </p>
-          )}
+          <p className="text-zinc-500 text-xs text-center mt-4">
+            {mode === 'signup' ? 'Free tier: 50 AI messages per day' : 'Welcome back'}
+          </p>
         </div>
       </div>
     </div>

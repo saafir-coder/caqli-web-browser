@@ -1,36 +1,150 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Caqli AI
 
-## Getting Started
+Browser-based AI coding assistant built for Somali developers. Free access to powerful AI models — no Anthropic account, no VPN, no installation needed.
 
-First, run the development server:
+Think Cursor, but free and runs entirely in the browser.
+
+---
+
+## What It Does
+
+- **Free tier** — 50 AI messages/day via Open Router (Llama, Gemma, Nemotron, etc.)
+- **Paid tier** — Claude Sonnet, GPT-4o, Gemini 2.0 Flash (credit-based, contact via Telegram)
+- **VS Code integration** — Works as a backend for the [Continue](https://continue.dev) extension
+- **Web editor** — Monaco editor (same as VS Code) with AI chat sidebar
+
+---
+
+## Tech Stack
+
+- **Next.js 16** (App Router) + TypeScript
+- **Supabase** — Auth, PostgreSQL, Row-Level Security
+- **Open Router** — Free model routing
+- **Anthropic SDK** — Claude (paid tier)
+- **Monaco Editor** — In-browser code editor
+- **Tailwind CSS 4** — Dark theme UI
+
+---
+
+## Getting Started (Local)
+
+### 1. Clone and install
+
+```bash
+git clone https://github.com/saafir-coder/caqli-ai.git
+cd caqli-ai
+npm install
+```
+
+### 2. Set up environment variables
+
+Create `.env.local` in the project root:
+
+```env
+NEXT_PUBLIC_SUPABASE_URL=your_supabase_url
+NEXT_PUBLIC_SUPABASE_ANON_KEY=your_supabase_anon_key
+SUPABASE_SERVICE_ROLE_KEY=your_service_role_key
+OPENROUTER_API_KEY=your_openrouter_key
+ANTHROPIC_API_KEY=your_anthropic_key
+```
+
+### 3. Set up Supabase
+
+Run both SQL files in your Supabase SQL editor:
+
+```
+supabase/schema.sql
+supabase/api-keys-schema.sql
+```
+
+### 4. Run locally
 
 ```bash
 npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+Open [http://localhost:3000](http://localhost:3000).
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+---
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+## Project Structure
 
-## Learn More
+```
+app/
+  page.tsx              # Landing page
+  login/                # Auth (sign up / log in)
+  editor/               # Web code editor + AI chat
+  dashboard/            # Setup wizard, API key, credit purchase
+  admin/                # Admin panel (credit topup, user management)
+  api/
+    chat/               # Web editor chat (free & paid routing)
+    credits/            # Credit balance
+    keys/               # API key generation
+    admin/              # Admin endpoints
+    v1/
+      chat/completions/ # OpenAI-compatible proxy (for Continue IDE)
+      messages/         # Anthropic-format proxy
 
-To learn more about Next.js, take a look at the following resources:
+components/
+  Editor.tsx            # Monaco editor wrapper
+  ChatPanel.tsx         # AI chat sidebar
+  CreditBadge.tsx       # Credit/usage display
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+lib/
+  supabase.ts           # Browser Supabase client
+  supabase-server.ts    # Server Supabase client
+  openrouter.ts         # Open Router (free models)
+  anthropic.ts          # Anthropic SDK (paid)
+  pricing.ts            # Token to credit conversion
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+supabase/
+  schema.sql            # Main DB schema (profiles, credits, messages, usage)
+  api-keys-schema.sql   # API keys + usage log
+```
 
-## Deploy on Vercel
+---
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+## Credit System
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+- 1 credit = ~$0.01
+- Free tier: 50 messages/day, resets at UTC midnight
+- Paid credits: purchased via Telegram contact, added manually by admin
+- Pricing defined in `lib/pricing.ts` (token rates with 2.5x markup)
+
+---
+
+## VS Code + Continue Setup
+
+After signing up, go to the Dashboard and follow the 3-step setup:
+1. Download VS Code
+2. Install the Continue extension
+3. Copy the setup command and paste it in the VS Code terminal
+
+This auto-configures all 8 models using your `caqli_*` API key.
+
+---
+
+## Admin
+
+Access `/admin` with the Supabase service role key to:
+- View all users and usage stats
+- Top up credits for any user
+- Reset passwords
+
+---
+
+## Environment Variables Reference
+
+| Variable | Description |
+|---|---|
+| `NEXT_PUBLIC_SUPABASE_URL` | Supabase project URL |
+| `NEXT_PUBLIC_SUPABASE_ANON_KEY` | Supabase anon/public key |
+| `SUPABASE_SERVICE_ROLE_KEY` | Supabase service role key (server only) |
+| `OPENROUTER_API_KEY` | Open Router API key (free models) |
+| `ANTHROPIC_API_KEY` | Anthropic API key (Claude paid tier) |
+
+---
+
+## License
+
+MIT

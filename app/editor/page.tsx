@@ -24,7 +24,7 @@ export default function EditorPage() {
 
   async function handleSignOut() {
     await supabase.auth.signOut()
-    router.push('/')
+    window.location.href = '/'
   }
 
   return (

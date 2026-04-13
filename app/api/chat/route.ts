@@ -3,7 +3,7 @@ import { streamFreeCompletion } from '@/lib/openrouter'
 import { streamPaidCompletion } from '@/lib/anthropic'
 import { NextRequest } from 'next/server'
 
-const SYSTEM_PROMPT = `You are Caqli AI, an expert coding assistant built for Somali developers. 
+const SYSTEM_PROMPT = `You are Caqli AI, an expert coding assistant built for Somali developers.
 You help users write, debug, and understand code. Be concise, practical, and clear.
 When you see code in the message, analyze it carefully before responding.
 Always provide working code examples.`
@@ -11,18 +11,23 @@ Always provide working code examples.`
 const FREE_DAILY_LIMIT = 20
 
 export async function POST(req: NextRequest) {
-  const supabase = createClient()
+  const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
 
   if (!user) {
-    return new Response('Unauthorized', { status: 401 })
+    return Response.json({ error: 'unauthorized' }, { status: 401 })
   }
 
-  const { messages, code, tier } = await req.json() as {
-    messages: { role: 'user' | 'assistant'; content: string }[]
-    code: string
-    tier: 'free' | 'paid'
+  const body = await req.json()
+  const messages = body.messages as { role: 'user' | 'assistant'; content: string }[] | undefined
+  const code = (body.code as string) ?? ''
+  const tier = body.tier as 'free' | 'paid' | undefined
+
+  if (!messages || messages.length === 0 || !tier || (tier !== 'free' && tier !== 'paid')) {
+    return Response.json({ error: 'invalid_request' }, { status: 400 })
   }
+
+  const lastMessage = messages[messages.length - 1]
 
   // Inject code context into last user message if code exists
   const messagesWithCode = code
@@ -34,7 +39,6 @@ export async function POST(req: NextRequest) {
     : messages
 
   if (tier === 'free') {
-    // Check daily limit
     const today = new Date().toISOString().split('T')[0]
     const { data: usage } = await supabase
       .from('daily_usage')
@@ -45,21 +49,10 @@ export async function POST(req: NextRequest) {
 
     const count = usage?.message_count ?? 0
     if (count >= FREE_DAILY_LIMIT) {
-      return new Response(
-        JSON.stringify({ error: 'daily_limit_reached', limit: FREE_DAILY_LIMIT }),
-        { status: 429, headers: { 'Content-Type': 'application/json' } }
-      )
+      return Response.json({ error: 'daily_limit_reached', limit: FREE_DAILY_LIMIT }, { status: 429 })
     }
 
-    // Increment usage
-    await supabase.from('daily_usage').upsert({
-      user_id: user.id,
-      date: today,
-      message_count: count + 1,
-    }, { onConflict: 'user_id,date' })
-
-    // Save message to DB
-    const lastMessage = messages[messages.length - 1]
+    // Save user message
     await supabase.from('messages').insert({
       user_id: user.id,
       role: lastMessage.role,
@@ -68,7 +61,6 @@ export async function POST(req: NextRequest) {
       tier: 'free',
     })
 
-    // Stream response
     const encoder = new TextEncoder()
     const stream = new ReadableStream({
       async start(controller) {
@@ -84,7 +76,13 @@ export async function POST(req: NextRequest) {
             }
           }
 
-          // Save assistant response
+          // Increment usage only after successful stream
+          await supabase.from('daily_usage').upsert({
+            user_id: user.id,
+            date: today,
+            message_count: count + 1,
+          }, { onConflict: 'user_id,date' })
+
           await supabase.from('messages').insert({
             user_id: user.id,
             role: 'assistant',
@@ -94,63 +92,9 @@ export async function POST(req: NextRequest) {
           })
 
           controller.close()
-        } catch (err) {
-          controller.error(err)
-        }
-      },
-    })
-
-    return new Response(stream, {
-      headers: { 'Content-Type': 'text/plain; charset=utf-8' },
-    })
-  }
-
-  if (tier === 'paid') {
-    // Check credits
-    const { data: credits } = await supabase
-      .from('credits')
-      .select('balance')
-      .eq('user_id', user.id)
-      .single()
-
-    if (!credits || credits.balance <= 0) {
-      return new Response(
-        JSON.stringify({ error: 'no_credits' }),
-        { status: 402, headers: { 'Content-Type': 'application/json' } }
-      )
-    }
-
-    // Deduct 1 credit
-    await supabase
-      .from('credits')
-      .update({ balance: credits.balance - 1, updated_at: new Date().toISOString() })
-      .eq('user_id', user.id)
-
-    const encoder = new TextEncoder()
-    const stream = new ReadableStream({
-      async start(controller) {
-        try {
-          const completion = await streamPaidCompletion(messagesWithCode, SYSTEM_PROMPT)
-          let fullResponse = ''
-
-          for await (const text of completion.textStream) {
-            if (text) {
-              fullResponse += text
-              controller.enqueue(encoder.encode(text))
-            }
-          }
-
-          await supabase.from('messages').insert({
-            user_id: user.id,
-            role: 'assistant',
-            content: fullResponse,
-            model_used: 'claude-sonnet-4-6',
-            tier: 'paid',
-          })
-
+        } catch {
+          controller.enqueue(encoder.encode('\n\n[Error: AI model failed to respond. Please try again.]'))
           controller.close()
-        } catch (err) {
-          controller.error(err)
         }
       },
     })
@@ -160,5 +104,64 @@ export async function POST(req: NextRequest) {
     })
   }
 
-  return new Response('Invalid tier', { status: 400 })
+  // paid tier
+  const { data: credits } = await supabase
+    .from('credits')
+    .select('balance')
+    .eq('user_id', user.id)
+    .single()
+
+  if (!credits || credits.balance <= 0) {
+    return Response.json({ error: 'no_credits' }, { status: 402 })
+  }
+
+  // Save user message
+  await supabase.from('messages').insert({
+    user_id: user.id,
+    role: lastMessage.role,
+    content: lastMessage.content,
+    model_used: 'claude-sonnet-4-6',
+    tier: 'paid',
+  })
+
+  const encoder = new TextEncoder()
+  const stream = new ReadableStream({
+    async start(controller) {
+      try {
+        const completion = await streamPaidCompletion(messagesWithCode, SYSTEM_PROMPT)
+        let fullResponse = ''
+
+        for await (const event of completion) {
+          if (event.type === 'content_block_delta' && event.delta.type === 'text_delta') {
+            const text = event.delta.text
+            fullResponse += text
+            controller.enqueue(encoder.encode(text))
+          }
+        }
+
+        // Deduct credit only after successful stream
+        await supabase
+          .from('credits')
+          .update({ balance: credits.balance - 1, updated_at: new Date().toISOString() })
+          .eq('user_id', user.id)
+
+        await supabase.from('messages').insert({
+          user_id: user.id,
+          role: 'assistant',
+          content: fullResponse,
+          model_used: 'claude-sonnet-4-6',
+          tier: 'paid',
+        })
+
+        controller.close()
+      } catch {
+        controller.enqueue(encoder.encode('\n\n[Error: AI model failed to respond. Please try again.]'))
+        controller.close()
+      }
+    },
+  })
+
+  return new Response(stream, {
+    headers: { 'Content-Type': 'text/plain; charset=utf-8' },
+  })
 }

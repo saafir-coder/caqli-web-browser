@@ -18,11 +18,17 @@ export function ChatPanel({ code, tier, onTierChange }: ChatPanelProps) {
   const [input, setInput] = useState('')
   const [loading, setLoading] = useState(false)
   const [limitReached, setLimitReached] = useState(false)
+  const [refreshCredits, setRefreshCredits] = useState(0)
   const bottomRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: 'smooth' })
   }, [messages])
+
+  function handleTierChange(newTier: 'free' | 'paid') {
+    if (newTier === 'paid') setLimitReached(false)
+    onTierChange(newTier)
+  }
 
   async function sendMessage() {
     if (!input.trim() || loading) return
@@ -43,7 +49,7 @@ export function ChatPanel({ code, tier, onTierChange }: ChatPanelProps) {
         setLimitReached(true)
         setMessages(prev => [...prev, {
           role: 'assistant',
-          content: '⚠️ You have reached your 20 free messages for today. Upgrade to paid for unlimited access.',
+          content: 'You have reached your 20 free messages for today. Switch to paid for unlimited access.',
         }])
         setLoading(false)
         return
@@ -52,14 +58,23 @@ export function ChatPanel({ code, tier, onTierChange }: ChatPanelProps) {
       if (res.status === 402) {
         setMessages(prev => [...prev, {
           role: 'assistant',
-          content: '⚠️ No credits remaining. Contact us on WhatsApp to top up: your_whatsapp_number',
+          content: 'No credits remaining. Contact us to top up.',
+        }])
+        setLoading(false)
+        return
+      }
+
+      if (!res.ok || !res.body) {
+        setMessages(prev => [...prev, {
+          role: 'assistant',
+          content: 'Something went wrong. Please try again.',
         }])
         setLoading(false)
         return
       }
 
       // Stream the response
-      const reader = res.body!.getReader()
+      const reader = res.body.getReader()
       const decoder = new TextDecoder()
       let assistantContent = ''
 
@@ -75,7 +90,9 @@ export function ChatPanel({ code, tier, onTierChange }: ChatPanelProps) {
           { role: 'assistant', content: assistantContent },
         ])
       }
-    } catch (err) {
+
+      setRefreshCredits(c => c + 1)
+    } catch {
       setMessages(prev => [...prev, {
         role: 'assistant',
         content: 'Error: Could not connect. Please try again.',
@@ -94,9 +111,9 @@ export function ChatPanel({ code, tier, onTierChange }: ChatPanelProps) {
           <span className="text-sm font-medium text-zinc-200">Caqli AI</span>
         </div>
         <div className="flex items-center gap-2">
-          <CreditBadge tier={tier} />
+          <CreditBadge tier={tier} refreshKey={refreshCredits} />
           <button
-            onClick={() => onTierChange(tier === 'free' ? 'paid' : 'free')}
+            onClick={() => handleTierChange(tier === 'free' ? 'paid' : 'free')}
             className={`text-xs px-2 py-1 rounded transition-colors ${
               tier === 'paid'
                 ? 'bg-violet-600 text-white'
@@ -164,19 +181,19 @@ export function ChatPanel({ code, tier, onTierChange }: ChatPanelProps) {
             }}
             placeholder="Ask about your code... (Enter to send)"
             rows={2}
-            disabled={limitReached}
+            disabled={limitReached && tier === 'free'}
             className="flex-1 bg-zinc-800 border border-zinc-700 rounded-lg px-3 py-2 text-sm text-white placeholder-zinc-500 focus:outline-none focus:border-violet-500 resize-none disabled:opacity-50"
           />
           <button
             onClick={sendMessage}
-            disabled={loading || !input.trim() || limitReached}
+            disabled={loading || !input.trim() || (limitReached && tier === 'free')}
             className="bg-violet-600 hover:bg-violet-500 disabled:opacity-40 text-white px-4 rounded-lg transition-colors text-sm font-medium"
           >
             Send
           </button>
         </div>
         <p className="text-zinc-600 text-xs mt-2">
-          Shift+Enter for new line • AI sees your code automatically
+          Shift+Enter for new line
         </p>
       </div>
     </div>

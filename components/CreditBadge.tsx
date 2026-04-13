@@ -7,12 +7,15 @@ interface Credits {
   freeDailyLimit: number
 }
 
-export function CreditBadge({ tier }: { tier: 'free' | 'paid' }) {
+export function CreditBadge({ tier, refreshKey }: { tier: 'free' | 'paid'; refreshKey: number }) {
   const [credits, setCredits] = useState<Credits | null>(null)
 
   useEffect(() => {
-    fetch('/api/credits').then(r => r.json()).then(setCredits)
-  }, [])
+    fetch('/api/credits')
+      .then(r => r.ok ? r.json() : null)
+      .then(data => { if (data) setCredits(data) })
+      .catch(() => {})
+  }, [refreshKey])
 
   if (!credits) return null
 
