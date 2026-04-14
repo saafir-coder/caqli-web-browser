@@ -47,9 +47,8 @@ export async function streamFreeCompletion(
       stream: true,
       max_tokens: 2048,
     })
-  } catch (error: any) {
-    if (error?.status !== 429) throw error
-    // Rate limited — fall through to Groq
+  } catch {
+    // Any OpenRouter failure (rate limit, dead key, etc.) — fall through to Groq
   }
 
   // 2. Try Groq keys in random order
@@ -85,7 +84,7 @@ export async function fetchFreeCompletion(body: Record<string, unknown>): Promis
   // 1. Try Open Router first (random key from pool)
   const orRes = await openRouterFetch({ ...body, model })
 
-  if (orRes.status !== 429) return orRes
+  if (orRes.ok) return orRes
 
   // 2. Try Groq keys in random order
   for (const key of shuffled(GROQ_KEYS)) {
