@@ -139,7 +139,10 @@ ANTHROPIC_API_KEY                 — Paid tier. Claude Sonnet 4.6
 
 ---
 
-## CHANGELOG
+## Recent Changes
+See [CHANGELOG.md](CHANGELOG.md) — auto-updated by Claude Code after every session.
+
+## CHANGELOG (this session)
 
 ### 2026-04-14 — Session with Abdillahi
 
