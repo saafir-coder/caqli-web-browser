@@ -42,3 +42,8 @@ next-env.d.ts
 
 # test artifacts
 /test-screenshots/
+.env.local
+node_modules/
+test-screenshots/
+.next/
+*.tsbuildinfo

@@ -7,6 +7,9 @@ const inter = Inter({ subsets: ['latin'] })
 export const metadata: Metadata = {
   title: 'Caqli AI — AI Coding for Somali Developers',
   description: 'Build software with AI. Free access to powerful models.',
+  verification: {
+    google: '8-Gsr51oE82tvBuvu5ernU2PJ4Wm-ZqVG1eXuxF5X3A',
+  },
 }
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {

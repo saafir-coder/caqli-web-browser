@@ -1,7 +1,7 @@
 import { createClient } from '@supabase/supabase-js'
 import { NextRequest } from 'next/server'
 import { calculateCost, estimateMinCost } from '@/lib/pricing'
-import { fetchFreeCompletion } from '@/lib/groq'
+import { openRouterFetch } from '@/lib/openrouter-pool'
 
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -27,7 +27,7 @@ export async function POST(req: NextRequest) {
   }
 
   const body = await req.json()
-  const model = body.model || 'nvidia/nemotron-nano-9b-v2:free'
+  const model = body.model || 'nvidia/nemotron-3-super-120b-a12b:free'
   const isFree = model.endsWith(':free')
 
   if (isFree) {
@@ -62,19 +62,8 @@ export async function POST(req: NextRequest) {
     }
   }
 
-  // Route free models to Groq (multi-key load balanced), paid to Open Router
-  const upstreamRes = isFree
-    ? await fetchFreeCompletion({ ...body, stream: body.stream ?? false })
-    : await fetch('https://openrouter.ai/api/v1/chat/completions', {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${process.env.OPENROUTER_API_KEY}`,
-          'Content-Type': 'application/json',
-          'HTTP-Referer': 'https://caqli.ai',
-          'X-Title': 'Caqli AI',
-        },
-        body: JSON.stringify({ ...body, model, stream: body.stream ?? false }),
-      })
+  // All models go through Open Router (random key from pool)
+  const upstreamRes = await openRouterFetch({ ...body, model, stream: body.stream ?? false })
 
   if (!upstreamRes.ok) {
     const errText = await upstreamRes.text()
@@ -89,8 +78,8 @@ export async function POST(req: NextRequest) {
       return Response.json({ error: { message: 'No stream', type: 'upstream_error' } }, { status: 502 })
     }
 
+    const today = new Date().toISOString().split('T')[0]
     if (isFree) {
-      const today = new Date().toISOString().split('T')[0]
       const { data: usage } = await supabase.from('daily_usage').select('message_count').eq('user_id', user.id).eq('date', today).single()
       await supabase.from('daily_usage').upsert({
         user_id: user.id, date: today, message_count: (usage?.message_count ?? 0) + 1,

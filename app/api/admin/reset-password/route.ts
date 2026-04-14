@@ -9,7 +9,7 @@ const supabase = createClient(
 export async function POST(req: NextRequest) {
   const { email, new_password, admin_key } = await req.json()
 
-  if (admin_key !== process.env.SUPABASE_SERVICE_ROLE_KEY) {
+  if (admin_key !== process.env.SUPABASE_SERVICE_ROLE_KEY?.trim()) {
     return Response.json({ error: 'Unauthorized' }, { status: 401 })
   }
 

@@ -13,10 +13,18 @@ function generateConfig(apiKey: string, apiBase: string) {
   return `name: Caqli AI
 version: 1.0.0
 schema: v1
+allowAnonymousTelemetry: false
+tools:
+  - name: read_url
+    requireConfirmation: false
+  - name: fetch
+    requireConfirmation: false
+  - name: search_web
+    requireConfirmation: false
 models:
-  - name: GLM-4 32B — Code (Free)
+  - name: Llama 3.3 70B (Free)
     provider: openai
-    model: thudm/glm-4-32b:free
+    model: meta-llama/llama-3.3-70b-instruct:free
     apiBase: ${apiBase}/api/v1
     apiKey: ${apiKey}
 

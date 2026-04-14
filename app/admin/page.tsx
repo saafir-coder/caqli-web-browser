@@ -9,6 +9,8 @@ interface User {
   credits_balance: number
   total_purchased: number
   free_used_today: number
+  last_active: string | null
+  total_messages: number
 }
 
 export default function AdminPage() {
@@ -109,6 +111,7 @@ export default function AdminPage() {
 
   const totalCreditsOut = users.reduce((sum, u) => sum + u.total_purchased, 0)
   const totalFreeToday = users.reduce((sum, u) => sum + u.free_used_today, 0)
+  const activeUsers = users.filter(u => u.total_messages > 0).length
 
   return (
     <div className="min-h-screen bg-zinc-950">
@@ -131,6 +134,10 @@ export default function AdminPage() {
           <div className="bg-zinc-900 border border-zinc-800 rounded-xl p-5">
             <p className="text-zinc-400 text-sm">Free Msgs Today</p>
             <p className="text-2xl font-bold text-green-400">{totalFreeToday}</p>
+          </div>
+          <div className="bg-zinc-900 border border-zinc-800 rounded-xl p-5">
+            <p className="text-zinc-400 text-sm">Active Users</p>
+            <p className="text-2xl font-bold text-blue-400">{activeUsers}</p>
           </div>
           <div className="bg-zinc-900 border border-zinc-800 rounded-xl p-5">
             <p className="text-zinc-400 text-sm">Revenue Est.</p>

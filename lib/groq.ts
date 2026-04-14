@@ -1,4 +1,5 @@
 import OpenAI from 'openai'
+import { openRouterFetch } from './openrouter-pool'
 
 // ─── Groq fallback keys (add more at console.groq.com — free, no card) ───────
 const GROQ_KEYS = [
@@ -21,25 +22,16 @@ function shuffled<T>(arr: T[]): T[] {
   return a
 }
 
-// ─── Open Router (primary) ────────────────────────────────────────────────────
-
-const openRouterClient = new OpenAI({
-  baseURL: 'https://openrouter.ai/api/v1',
-  apiKey: process.env.OPENROUTER_API_KEY!,
-  defaultHeaders: {
-    'HTTP-Referer': 'https://caqli.ai',
-    'X-Title': 'Caqli AI',
-  },
-})
-
-// ─── Cascade: Open Router first → Groq fallbacks ─────────────────────────────
+// ─── Cascade: Open Router pool first → Groq fallbacks ────────────────────────
 //
 // Flow:
-//   1. Try Open Router (primary — multiple models, best quality)
+//   1. Try Open Router (random key from pool)
 //   2. If rate limited (429) → try Groq keys in random order
 //   3. If all Groq keys rate limited → throw with friendly message
 //
 // ─────────────────────────────────────────────────────────────────────────────
+
+import { openRouterClient as getOpenRouterClient } from './openrouter-pool'
 
 export async function streamFreeCompletion(
   messages: { role: 'user' | 'assistant'; content: string }[],
@@ -47,9 +39,9 @@ export async function streamFreeCompletion(
 ) {
   const fullMessages = [{ role: 'system' as const, content: systemPrompt }, ...messages]
 
-  // 1. Try Open Router first
+  // 1. Try Open Router first (random key from pool)
   try {
-    return await openRouterClient.chat.completions.create({
+    return await getOpenRouterClient().chat.completions.create({
       model: 'meta-llama/llama-3.1-8b-instruct:free',
       messages: fullMessages,
       stream: true,
@@ -86,17 +78,12 @@ export async function streamFreeCompletion(
 // ─── Same cascade for the v1 proxy endpoint (Continue IDE) ───────────────────
 
 export async function fetchFreeCompletion(body: Record<string, unknown>): Promise<Response> {
-  // 1. Try Open Router first
-  const orRes = await fetch('https://openrouter.ai/api/v1/chat/completions', {
-    method: 'POST',
-    headers: {
-      'Authorization': `Bearer ${process.env.OPENROUTER_API_KEY}`,
-      'Content-Type': 'application/json',
-      'HTTP-Referer': 'https://caqli.ai',
-      'X-Title': 'Caqli AI',
-    },
-    body: JSON.stringify({ ...body, model: 'meta-llama/llama-3.1-8b-instruct:free' }),
-  })
+  // Use the model from the request (Continue sends the user's chosen model).
+  // Fall back to Llama if none provided.
+  const model = (body.model as string) || 'meta-llama/llama-3.1-8b-instruct:free'
+
+  // 1. Try Open Router first (random key from pool)
+  const orRes = await openRouterFetch({ ...body, model })
 
   if (orRes.status !== 429) return orRes
 
