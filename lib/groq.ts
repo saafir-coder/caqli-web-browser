@@ -64,8 +64,15 @@ export async function streamFreeCompletion(
         stream: true,
         max_tokens: 2048,
       })
-    } catch (error: any) {
-      if (error?.status !== 429) throw error
+    } catch (error: unknown) {
+      const status =
+        typeof error === 'object' &&
+        error !== null &&
+        'status' in error &&
+        typeof error.status === 'number'
+          ? error.status
+          : undefined
+      if (status !== 429) throw error
       // This Groq key is rate limited — try next one
     }
   }

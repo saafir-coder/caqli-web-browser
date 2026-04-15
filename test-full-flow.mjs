@@ -86,7 +86,7 @@ async function run() {
     await page.waitForNavigation({ waitUntil: 'networkidle2', timeout: 10000 })
     const url = page.url()
     log('Login redirects to dashboard', url.includes('/dashboard'), `url=${url}`)
-  } catch (e) {
+  } catch {
     log('Login redirect', false, `Stuck at ${page.url()}`)
     // Check for error message
     try {
@@ -156,7 +156,7 @@ async function run() {
 
     // Test copy button exists
     try {
-      const copyBtn = await page.$eval('button', (el) => {
+      const copyBtn = await page.$eval('button', () => {
         const buttons = document.querySelectorAll('button')
         for (const b of buttons) {
           if (b.textContent === 'Copy') return true

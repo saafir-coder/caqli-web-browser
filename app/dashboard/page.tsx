@@ -3,6 +3,8 @@ import { useState, useEffect } from 'react'
 import { createClient } from '@/lib/supabase'
 import { useRouter } from 'next/navigation'
 
+const DESKTOP_RELEASES_URL = 'https://github.com/saafir-coder/caqli-desktop/releases'
+
 interface Credits {
   paidCredits: number
   freeUsedToday: number
@@ -95,11 +97,10 @@ export default function DashboardPage() {
   const [credits, setCredits] = useState<Credits | null>(null)
   const [copiedKey, setCopiedKey] = useState(false)
   const [copiedConfig, setCopiedConfig] = useState(false)
-  const [downloadedConfig, setDownloadedConfig] = useState(false)
   const [loading, setLoading] = useState(true)
   const [showUpgrade, setShowUpgrade] = useState(false)
   const router = useRouter()
-  const supabase = createClient()
+  const [supabase] = useState(() => createClient())
 
   useEffect(() => {
     async function load() {
@@ -121,7 +122,7 @@ export default function DashboardPage() {
       setLoading(false)
     }
     load()
-  }, [])
+  }, [router, supabase])
 
   function getInstallCommand() {
     if (!apiKey) return ''
@@ -135,85 +136,11 @@ export default function DashboardPage() {
     setTimeout(() => setCopiedConfig(false), 2000)
   }
 
-  function downloadInstaller() {
-    if (!apiKey) return
-    const base = typeof window !== 'undefined' ? window.location.origin : 'https://caqli.ai'
-    const config = generateConfig(apiKey, base)
-
-    // Create a .command file (Mac) that installs everything
-    const script = `#!/bin/bash
-# Caqli AI — One-Click Setup
-echo ""
-echo "=============================="
-echo "  Setting up Caqli AI..."
-echo "=============================="
-echo ""
-
-# Create config directory if it doesn't exist
-mkdir -p ~/.continue
-
-# Write config file
-cat > ~/.continue/config.yaml << 'CAQLI_CONFIG'
-${config}CAQLI_CONFIG
-
-echo "Config installed at ~/.continue/config.yaml"
-echo ""
-
-# Install Continue extension in VS Code
-if command -v code &> /dev/null; then
-  code --install-extension Continue.continue 2>/dev/null
-  echo "Continue extension installed in VS Code"
-else
-  echo "VS Code not found. Install it from: https://code.visualstudio.com"
-  echo "Then install the Continue extension from the Extensions panel."
-fi
-
-echo ""
-echo "=============================="
-echo "  Done! Open VS Code and"
-echo "  press Cmd+L to start."
-echo "=============================="
-echo ""
-read -p "Press Enter to close..."
-`
-    const blob = new Blob([script], { type: 'application/octet-stream' })
-    const url = URL.createObjectURL(blob)
-    const a = document.createElement('a')
-    a.href = url
-    a.download = 'install-caqli.command'
-    a.click()
-    URL.revokeObjectURL(url)
-    setDownloadedConfig(true)
-    setTimeout(() => setDownloadedConfig(false), 3000)
-  }
-
   function copyKey() {
     if (!apiKey) return
     navigator.clipboard.writeText(apiKey)
     setCopiedKey(true)
     setTimeout(() => setCopiedKey(false), 2000)
-  }
-
-  function downloadConfig() {
-    if (!apiKey) return
-    const config = generateConfig(apiKey, typeof window !== 'undefined' ? window.location.origin : 'https://caqli.ai')
-    const blob = new Blob([config], { type: 'text/yaml' })
-    const url = URL.createObjectURL(blob)
-    const a = document.createElement('a')
-    a.href = url
-    a.download = 'config.yaml'
-    a.click()
-    URL.revokeObjectURL(url)
-    setDownloadedConfig(true)
-    setTimeout(() => setDownloadedConfig(false), 3000)
-  }
-
-  function copyConfig() {
-    if (!apiKey) return
-    const config = generateConfig(apiKey, typeof window !== 'undefined' ? window.location.origin : 'https://caqli.ai')
-    navigator.clipboard.writeText(config)
-    setCopiedConfig(true)
-    setTimeout(() => setCopiedConfig(false), 2000)
   }
 
   async function handleSignOut() {
@@ -430,6 +357,25 @@ read -p "Press Enter to close..."
         </div>
 
         {/* API Key (for advanced users) */}
+        <div className="bg-zinc-900 border border-zinc-800 rounded-xl p-6 mb-6">
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+            <div>
+              <h2 className="text-lg font-semibold text-white">Caqli Desktop App</h2>
+              <p className="text-zinc-400 text-sm mt-1">
+                Download the standalone desktop app to work on your real local files without VS Code.
+              </p>
+            </div>
+            <a
+              href={DESKTOP_RELEASES_URL}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="inline-flex items-center justify-center bg-violet-600 hover:bg-violet-500 text-white px-5 py-3 rounded-lg text-sm font-medium transition-colors whitespace-nowrap"
+            >
+              Download Desktop App
+            </a>
+          </div>
+        </div>
+
         <div className="bg-zinc-900 border border-zinc-800 rounded-xl p-6 mb-10">
           <div className="flex items-center justify-between mb-4">
             <h2 className="text-lg font-semibold text-white">Your API Key</h2>

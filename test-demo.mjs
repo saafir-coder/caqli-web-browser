@@ -89,7 +89,6 @@ async function run() {
     console.log('\n--- SIGN OUT ---')
     await page.goto(`${BASE}/dashboard`, { waitUntil: 'networkidle2' })
     await wait(500)
-    const signOutBtn = await page.$('button')
     const buttons = await page.$$('button')
     for (const btn of buttons) {
       const text = await btn.evaluate(el => el.textContent)

@@ -1,9 +1,8 @@
 'use client'
-import { useState, useEffect } from 'react'
+import { useState } from 'react'
 import { Editor, LanguageSelector } from '@/components/Editor'
 import { ChatPanel } from '@/components/ChatPanel'
 import { createClient } from '@/lib/supabase'
-import { useRouter } from 'next/navigation'
 
 const STARTER_CODE = `// Welcome to Caqli AI
 // Write your code here — the AI can see it and help you
@@ -19,14 +18,12 @@ export default function EditorPage() {
   const [code, setCode] = useState(STARTER_CODE)
   const [language, setLanguage] = useState('javascript')
   const [tier, setTier] = useState<'free' | 'paid'>('free')
-  const [bannerDismissed, setBannerDismissed] = useState(false)
-  const router = useRouter()
+  const [bannerDismissed, setBannerDismissed] = useState(
+    () =>
+      typeof window !== 'undefined' &&
+      localStorage.getItem('caqli_beta_banner_dismissed') === '1'
+  )
   const supabase = createClient()
-
-  useEffect(() => {
-    const dismissed = localStorage.getItem('caqli_beta_banner_dismissed')
-    if (dismissed) setBannerDismissed(true)
-  }, [])
 
   function dismissBanner() {
     localStorage.setItem('caqli_beta_banner_dismissed', '1')

@@ -120,7 +120,7 @@ async function run() {
         console.log('Error:', err)
       } catch {}
     }
-  } catch (e) {
+  } catch {
     console.log('[FAIL] Timeout')
     try {
       const err = await page.$eval('.text-red-400', el => el.textContent)
