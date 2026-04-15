@@ -1,7 +1,5 @@
 import Link from 'next/link'
 
-const DESKTOP_RELEASES_URL = 'https://github.com/saafir-coder/caqli-desktop/releases'
-
 export default function LandingPage() {
   return (
     <div className="min-h-screen flex flex-col">
@@ -58,14 +56,12 @@ export default function LandingPage() {
           >
             Start Free — 100 messages/day
           </Link>
-          <a
-            href={DESKTOP_RELEASES_URL}
-            target="_blank"
-            rel="noopener noreferrer"
+          <Link
+            href="/desktop"
             className="bg-zinc-900 hover:bg-zinc-800 border border-zinc-700 text-zinc-100 font-semibold px-8 py-4 rounded-xl transition-colors text-lg"
           >
-            Download Desktop App
-          </a>
+            Desktop Preview
+          </Link>
         </div>
 
         {/* Features */}

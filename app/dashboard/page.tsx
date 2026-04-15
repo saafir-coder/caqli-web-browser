@@ -3,8 +3,6 @@ import { useState, useEffect } from 'react'
 import { createClient } from '@/lib/supabase'
 import { useRouter } from 'next/navigation'
 
-const DESKTOP_RELEASES_URL = 'https://github.com/saafir-coder/caqli-desktop/releases'
-
 interface Credits {
   paidCredits: number
   freeUsedToday: number
@@ -362,16 +360,14 @@ export default function DashboardPage() {
             <div>
               <h2 className="text-lg font-semibold text-white">Caqli Desktop App</h2>
               <p className="text-zinc-400 text-sm mt-1">
-                Download the standalone desktop app to work on your real local files without VS Code.
+                Run the desktop preview locally to work on your real local files without VS Code.
               </p>
             </div>
             <a
-              href={DESKTOP_RELEASES_URL}
-              target="_blank"
-              rel="noopener noreferrer"
+              href="/desktop"
               className="inline-flex items-center justify-center bg-violet-600 hover:bg-violet-500 text-white px-5 py-3 rounded-lg text-sm font-medium transition-colors whitespace-nowrap"
             >
-              Download Desktop App
+              Open Desktop Setup
             </a>
           </div>
         </div>
