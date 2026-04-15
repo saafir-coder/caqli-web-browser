@@ -1,6 +1,6 @@
 # Caqli AI
 
-Browser-based AI coding assistant built for Somali developers. Free access to powerful AI models — no Anthropic account, no VPN, no installation needed.
+AI coding assistant built for Somali developers. Caqli now lives as one canonical repository that contains the web product at the root and the desktop product under `desktop/`.
 
 Think Cursor, but free and runs entirely in the browser.
 
@@ -8,10 +8,11 @@ Think Cursor, but free and runs entirely in the browser.
 
 ## What It Does
 
-- **Free tier** — 50 AI messages/day via Open Router (Llama, Gemma, Nemotron, etc.)
+- **Free tier** — 100 AI messages/day via Open Router (Llama, Gemma, Nemotron, etc.)
 - **Paid tier** — Claude Sonnet, GPT-4o, Gemini 2.0 Flash (credit-based, contact via Telegram)
 - **VS Code integration** — Works as a backend for the [Continue](https://continue.dev) extension
 - **Web editor** — Monaco editor (same as VS Code) with AI chat sidebar
+- **Desktop app** — Electron workspace with local file access, model selection, and agent-driven edits
 
 ---
 
@@ -67,6 +68,13 @@ Open [http://localhost:3000](http://localhost:3000).
 
 ---
 
+## Repository Layout
+
+`caqli-ai` is the canonical repository for the product.
+
+- Root: Next.js web app, API, auth, billing, dashboard, browser editor
+- `desktop/`: imported desktop monorepo containing Electron, local server, web shell, and shared contracts
+
 ## Project Structure
 
 ```
@@ -100,6 +108,12 @@ lib/
 supabase/
   schema.sql            # Main DB schema (profiles, credits, messages, usage)
   api-keys-schema.sql   # API keys + usage log
+
+desktop/
+  apps/desktop/         # Electron desktop shell
+  apps/web/             # Desktop web UI
+  apps/server/          # Local backend/runtime
+  packages/             # Shared contracts and runtime packages
 ```
 
 ---
