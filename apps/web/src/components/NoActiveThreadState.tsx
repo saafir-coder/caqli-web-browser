@@ -2,8 +2,13 @@ import { Empty, EmptyDescription, EmptyHeader, EmptyTitle } from "./ui/empty";
 import { SidebarInset, SidebarTrigger } from "./ui/sidebar";
 import { isElectron } from "../env";
 import { cn } from "~/lib/utils";
+import { CaqliDesktopWorkspace } from "./CaqliDesktopWorkspace";
 
 export function NoActiveThreadState() {
+  if (isElectron && window.desktopBridge) {
+    return <CaqliDesktopWorkspace />;
+  }
+
   return (
     <SidebarInset className="h-dvh min-h-0 overflow-hidden overscroll-y-none bg-background text-foreground">
       <div className="flex min-h-0 min-w-0 flex-1 flex-col overflow-x-hidden bg-background">

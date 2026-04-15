@@ -145,11 +145,65 @@ export interface PickFolderOptions {
   initialPath?: string | null;
 }
 
+export type CaqliDesktopModelId = "llama-3.3-70b" | "hermes-3" | "claude-sonnet";
+
+export interface CaqliDesktopAuthState {
+  connected: boolean;
+  maskedKey: string | null;
+}
+
+export interface CaqliDesktopCreditStatus {
+  paidCredits: number;
+  freeUsedToday: number;
+  freeDailyLimit: number;
+}
+
+export interface CaqliDesktopWorkspaceEntry {
+  name: string;
+  path: string;
+  kind: "file" | "directory";
+  children?: readonly CaqliDesktopWorkspaceEntry[];
+}
+
+export interface CaqliDesktopWorkspaceSnapshot {
+  rootPath: string;
+  entries: readonly CaqliDesktopWorkspaceEntry[];
+}
+
+export interface CaqliDesktopToolEvent {
+  id: string;
+  tool: "list_files" | "view_file" | "edit_file" | "run_command";
+  status: "success" | "error";
+  summary: string;
+}
+
+export interface CaqliDesktopAgentRequest {
+  prompt: string;
+  model: CaqliDesktopModelId;
+  workspaceDir: string;
+}
+
+export interface CaqliDesktopAgentResponse {
+  message: string;
+  toolEvents: readonly CaqliDesktopToolEvent[];
+  credits: CaqliDesktopCreditStatus | null;
+  blockedReason?: "missing_api_key" | "invalid_api_key" | "insufficient_credits";
+}
+
 export interface DesktopBridge {
   getAppBranding: () => DesktopAppBranding | null;
   getLocalEnvironmentBootstrap: () => DesktopEnvironmentBootstrap | null;
   getClientSettings: () => Promise<ClientSettings | null>;
   setClientSettings: (settings: ClientSettings) => Promise<void>;
+  getCaqliAuthState: () => Promise<CaqliDesktopAuthState>;
+  setCaqliApiKey: (apiKey: string) => Promise<CaqliDesktopAuthState>;
+  clearCaqliApiKey: () => Promise<CaqliDesktopAuthState>;
+  getCaqliCredits: () => Promise<CaqliDesktopCreditStatus | null>;
+  readCaqliWorkspaceTree: (workspaceDir: string) => Promise<CaqliDesktopWorkspaceSnapshot>;
+  readCaqliFile: (workspaceDir: string, filePath: string) => Promise<string>;
+  sendCaqliAgentMessage: (
+    input: CaqliDesktopAgentRequest,
+  ) => Promise<CaqliDesktopAgentResponse>;
   getSavedEnvironmentRegistry: () => Promise<readonly PersistedSavedEnvironmentRecord[]>;
   setSavedEnvironmentRegistry: (
     records: readonly PersistedSavedEnvironmentRecord[],

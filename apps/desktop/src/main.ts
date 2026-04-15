@@ -20,6 +20,7 @@ import {
 } from "electron";
 import type { MenuItemConstructorOptions, OpenDialogOptions } from "electron";
 import type {
+  CaqliDesktopAgentRequest,
   ClientSettings,
   DesktopTheme,
   DesktopAppBranding,
@@ -45,6 +46,12 @@ import {
   writeDesktopSettings,
 } from "./desktopSettings";
 import {
+  clearCaqliApiKey,
+  readCaqliAuthState,
+  readCaqliApiKey,
+  writeCaqliApiKey,
+} from "./caqliApiKeyStore";
+import {
   readClientSettings,
   readSavedEnvironmentRegistry,
   readSavedEnvironmentSecret,
@@ -53,7 +60,9 @@ import {
   writeSavedEnvironmentRegistry,
   writeSavedEnvironmentSecret,
 } from "./clientPersistence";
+import { getCaqliCredits, runCaqliAgent } from "./caqliAgent";
 import { isBackendReadinessAborted, waitForHttpReady } from "./backendReadiness";
+import { readWorkspaceFile, readWorkspaceTree, resolveWorkspacePath } from "./caqliWorkspace";
 import { showDesktopConfirmDialog } from "./confirmDialog";
 import { resolveDesktopServerExposure } from "./serverExposure";
 import { syncShellEnvironment } from "./syncShellEnvironment";
@@ -92,6 +101,13 @@ const GET_APP_BRANDING_CHANNEL = "desktop:get-app-branding";
 const GET_LOCAL_ENVIRONMENT_BOOTSTRAP_CHANNEL = "desktop:get-local-environment-bootstrap";
 const GET_CLIENT_SETTINGS_CHANNEL = "desktop:get-client-settings";
 const SET_CLIENT_SETTINGS_CHANNEL = "desktop:set-client-settings";
+const GET_CAQLI_AUTH_STATE_CHANNEL = "desktop:get-caqli-auth-state";
+const SET_CAQLI_API_KEY_CHANNEL = "desktop:set-caqli-api-key";
+const CLEAR_CAQLI_API_KEY_CHANNEL = "desktop:clear-caqli-api-key";
+const GET_CAQLI_CREDITS_CHANNEL = "desktop:get-caqli-credits";
+const READ_CAQLI_WORKSPACE_TREE_CHANNEL = "desktop:read-caqli-workspace-tree";
+const READ_CAQLI_FILE_CHANNEL = "desktop:read-caqli-file";
+const SEND_CAQLI_AGENT_MESSAGE_CHANNEL = "desktop:send-caqli-agent-message";
 const GET_SAVED_ENVIRONMENT_REGISTRY_CHANNEL = "desktop:get-saved-environment-registry";
 const SET_SAVED_ENVIRONMENT_REGISTRY_CHANNEL = "desktop:set-saved-environment-registry";
 const GET_SAVED_ENVIRONMENT_SECRET_CHANNEL = "desktop:get-saved-environment-secret";
@@ -103,6 +119,7 @@ const BASE_DIR = process.env.T3CODE_HOME?.trim() || Path.join(OS.homedir(), ".t3
 const STATE_DIR = Path.join(BASE_DIR, "userdata");
 const DESKTOP_SETTINGS_PATH = Path.join(STATE_DIR, "desktop-settings.json");
 const CLIENT_SETTINGS_PATH = Path.join(STATE_DIR, "client-settings.json");
+const CAQLI_API_KEY_PATH = Path.join(STATE_DIR, "caqli-api-key.json");
 const SAVED_ENVIRONMENT_REGISTRY_PATH = Path.join(STATE_DIR, "saved-environments.json");
 const DESKTOP_SCHEME = "t3";
 const ROOT_DIR = Path.resolve(__dirname, "../../..");
@@ -1575,6 +1592,77 @@ function registerIpcHandlers(): void {
 
     writeClientSettings(CLIENT_SETTINGS_PATH, rawSettings as ClientSettings);
   });
+
+  ipcMain.removeHandler(GET_CAQLI_AUTH_STATE_CHANNEL);
+  ipcMain.handle(GET_CAQLI_AUTH_STATE_CHANNEL, async () =>
+    readCaqliAuthState(CAQLI_API_KEY_PATH, getDesktopSecretStorage()),
+  );
+
+  ipcMain.removeHandler(SET_CAQLI_API_KEY_CHANNEL);
+  ipcMain.handle(SET_CAQLI_API_KEY_CHANNEL, async (_event, rawApiKey: unknown) => {
+    if (typeof rawApiKey !== "string" || rawApiKey.trim().length === 0) {
+      throw new Error("Invalid Caqli API key.");
+    }
+
+    return writeCaqliApiKey(CAQLI_API_KEY_PATH, rawApiKey, getDesktopSecretStorage());
+  });
+
+  ipcMain.removeHandler(CLEAR_CAQLI_API_KEY_CHANNEL);
+  ipcMain.handle(CLEAR_CAQLI_API_KEY_CHANNEL, async () => clearCaqliApiKey(CAQLI_API_KEY_PATH));
+
+  ipcMain.removeHandler(GET_CAQLI_CREDITS_CHANNEL);
+  ipcMain.handle(GET_CAQLI_CREDITS_CHANNEL, async () => {
+    const apiKey = readCaqliApiKey(CAQLI_API_KEY_PATH, getDesktopSecretStorage());
+    if (!apiKey) {
+      return null;
+    }
+    return await getCaqliCredits(apiKey);
+  });
+
+  ipcMain.removeHandler(READ_CAQLI_WORKSPACE_TREE_CHANNEL);
+  ipcMain.handle(READ_CAQLI_WORKSPACE_TREE_CHANNEL, async (_event, rawWorkspaceDir: unknown) => {
+    if (typeof rawWorkspaceDir !== "string" || rawWorkspaceDir.trim().length === 0) {
+      throw new Error("Workspace directory is required.");
+    }
+
+    const workspaceDir = resolveWorkspacePath(rawWorkspaceDir, ".");
+    return {
+      rootPath: workspaceDir,
+      entries: readWorkspaceTree(workspaceDir),
+    } as const;
+  });
+
+  ipcMain.removeHandler(READ_CAQLI_FILE_CHANNEL);
+  ipcMain.handle(
+    READ_CAQLI_FILE_CHANNEL,
+    async (_event, rawWorkspaceDir: unknown, rawFilePath: unknown) => {
+      if (typeof rawWorkspaceDir !== "string" || rawWorkspaceDir.trim().length === 0) {
+        throw new Error("Workspace directory is required.");
+      }
+      if (typeof rawFilePath !== "string" || rawFilePath.trim().length === 0) {
+        throw new Error("File path is required.");
+      }
+
+      const workspaceDir = resolveWorkspacePath(rawWorkspaceDir, ".");
+      return readWorkspaceFile(workspaceDir, rawFilePath);
+    },
+  );
+
+  ipcMain.removeHandler(SEND_CAQLI_AGENT_MESSAGE_CHANNEL);
+  ipcMain.handle(
+    SEND_CAQLI_AGENT_MESSAGE_CHANNEL,
+    async (_event, rawRequest: unknown) => {
+      if (typeof rawRequest !== "object" || rawRequest === null) {
+        throw new Error("Invalid Caqli agent payload.");
+      }
+
+      const apiKey = readCaqliApiKey(CAQLI_API_KEY_PATH, getDesktopSecretStorage());
+      return await runCaqliAgent({
+        apiKey,
+        request: rawRequest as CaqliDesktopAgentRequest,
+      });
+    },
+  );
 
   ipcMain.removeHandler(GET_SAVED_ENVIRONMENT_REGISTRY_CHANNEL);
   ipcMain.handle(GET_SAVED_ENVIRONMENT_REGISTRY_CHANNEL, async () =>

@@ -17,6 +17,13 @@ const GET_APP_BRANDING_CHANNEL = "desktop:get-app-branding";
 const GET_LOCAL_ENVIRONMENT_BOOTSTRAP_CHANNEL = "desktop:get-local-environment-bootstrap";
 const GET_CLIENT_SETTINGS_CHANNEL = "desktop:get-client-settings";
 const SET_CLIENT_SETTINGS_CHANNEL = "desktop:set-client-settings";
+const GET_CAQLI_AUTH_STATE_CHANNEL = "desktop:get-caqli-auth-state";
+const SET_CAQLI_API_KEY_CHANNEL = "desktop:set-caqli-api-key";
+const CLEAR_CAQLI_API_KEY_CHANNEL = "desktop:clear-caqli-api-key";
+const GET_CAQLI_CREDITS_CHANNEL = "desktop:get-caqli-credits";
+const READ_CAQLI_WORKSPACE_TREE_CHANNEL = "desktop:read-caqli-workspace-tree";
+const READ_CAQLI_FILE_CHANNEL = "desktop:read-caqli-file";
+const SEND_CAQLI_AGENT_MESSAGE_CHANNEL = "desktop:send-caqli-agent-message";
 const GET_SAVED_ENVIRONMENT_REGISTRY_CHANNEL = "desktop:get-saved-environment-registry";
 const SET_SAVED_ENVIRONMENT_REGISTRY_CHANNEL = "desktop:set-saved-environment-registry";
 const GET_SAVED_ENVIRONMENT_SECRET_CHANNEL = "desktop:get-saved-environment-secret";
@@ -42,6 +49,15 @@ contextBridge.exposeInMainWorld("desktopBridge", {
   },
   getClientSettings: () => ipcRenderer.invoke(GET_CLIENT_SETTINGS_CHANNEL),
   setClientSettings: (settings) => ipcRenderer.invoke(SET_CLIENT_SETTINGS_CHANNEL, settings),
+  getCaqliAuthState: () => ipcRenderer.invoke(GET_CAQLI_AUTH_STATE_CHANNEL),
+  setCaqliApiKey: (apiKey) => ipcRenderer.invoke(SET_CAQLI_API_KEY_CHANNEL, apiKey),
+  clearCaqliApiKey: () => ipcRenderer.invoke(CLEAR_CAQLI_API_KEY_CHANNEL),
+  getCaqliCredits: () => ipcRenderer.invoke(GET_CAQLI_CREDITS_CHANNEL),
+  readCaqliWorkspaceTree: (workspaceDir) =>
+    ipcRenderer.invoke(READ_CAQLI_WORKSPACE_TREE_CHANNEL, workspaceDir),
+  readCaqliFile: (workspaceDir, filePath) =>
+    ipcRenderer.invoke(READ_CAQLI_FILE_CHANNEL, workspaceDir, filePath),
+  sendCaqliAgentMessage: (input) => ipcRenderer.invoke(SEND_CAQLI_AGENT_MESSAGE_CHANNEL, input),
   getSavedEnvironmentRegistry: () => ipcRenderer.invoke(GET_SAVED_ENVIRONMENT_REGISTRY_CHANNEL),
   setSavedEnvironmentRegistry: (records) =>
     ipcRenderer.invoke(SET_SAVED_ENVIRONMENT_REGISTRY_CHANNEL, records),
