@@ -1,5 +1,8 @@
 # Caqli AI Web Browser
 
+**GitHub:** [github.com/saafir-coder/caqli-web-browser](https://github.com/saafir-coder/caqli-web-browser)  
+**Workspace:** one product in the [Caqli meta repo](https://github.com/saafir-coder/caqli); not mixed with Cloud MVP or Desktop.
+
 Browser-first agent dashboard (fork of [T3 Code](https://github.com/pingdotgg/t3code)). Run agents per project folder via Codex or Claude — self-host, open in a normal tab.
 
 **Scope:** [`SCOPE.md`](SCOPE.md)
