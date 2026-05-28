@@ -15,8 +15,10 @@ import { useThreadSelectionStore } from "../threadSelectionStore";
 import { resolveSidebarNewThreadEnvMode } from "~/components/Sidebar.logic";
 import { useSettings } from "~/hooks/useSettings";
 import { useServerKeybindings } from "~/rpc/serverState";
+import { assertSessionMayEnterApp } from "../hosted/checkHostedAccess";
 import { getSupabaseBrowserClient } from "../hosted/supabaseClient";
 import { isHostedAuthConfigured } from "../hosted/config";
+import { readHostedCodexConnected } from "../hosted/hostedCodexConnection";
 import { readHostedProfileComplete } from "../hosted/onboardingStorage";
 
 function ChatRouteGlobalShortcuts() {
@@ -121,14 +123,31 @@ export const Route = createFileRoute("/_chat")({
 
     if (isHostedAuthConfigured()) {
       let session: Session | null = null;
+      let supabase: ReturnType<typeof getSupabaseBrowserClient> | null = null;
       try {
-        const supabase = getSupabaseBrowserClient();
+        supabase = getSupabaseBrowserClient();
         session = (await supabase.auth.getSession()).data.session ?? null;
       } catch {
         session = null;
       }
+      if (session) {
+        const access = assertSessionMayEnterApp(session.user.email);
+        if (!access.ok) {
+          if (supabase) {
+            await supabase.auth.signOut();
+          }
+          throw redirect({
+            to: "/access-denied",
+            search: { message: access.userMessage },
+            replace: true,
+          });
+        }
+      }
       if (session && !readHostedProfileComplete()) {
         throw redirect({ to: "/onboarding", replace: true });
+      }
+      if (session && readHostedProfileComplete() && !readHostedCodexConnected()) {
+        throw redirect({ to: "/connect-provider", replace: true });
       }
     }
   },

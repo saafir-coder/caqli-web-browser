@@ -1,9 +1,11 @@
 import { createFileRoute, redirect, useNavigate } from "@tanstack/react-router";
 import { useState } from "react";
 
+import { createHostedProject, HOSTED_ACTIVE_PROJECT_ID_KEY } from "../hosted/controlPlane/projects";
 import { HostedAuthPageChrome } from "../hosted/HostedAuthPageChrome";
 import { isHostedAuthConfigured } from "../hosted/config";
 import { writeHostedProfileComplete } from "../hosted/onboardingStorage";
+import { getSupabaseBrowserClient } from "../hosted/supabaseClient";
 
 export const Route = createFileRoute("/onboarding")({
   beforeLoad: async ({ context }) => {
@@ -21,6 +23,7 @@ function OnboardingPage() {
   const navigate = useNavigate();
   const [name, setName] = useState("My first project");
   const [busy, setBusy] = useState(false);
+  const [provisioning, setProvisioning] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   async function onSubmit(e: React.FormEvent) {
@@ -32,17 +35,33 @@ function OnboardingPage() {
       return;
     }
     setBusy(true);
+    setProvisioning(true);
     try {
+      const supabase = getSupabaseBrowserClient();
+      const {
+        data: { session },
+      } = await supabase.auth.getSession();
+      const userId = session?.user?.id;
+      if (!userId) {
+        setError("Your session expired. Sign in again from the welcome screen.");
+        return;
+      }
+
+      const project = await createHostedProject(supabase, userId, trimmed);
+
       try {
         globalThis.localStorage?.setItem("caqli.hostedFirstProjectName", trimmed);
+        globalThis.localStorage?.setItem(HOSTED_ACTIVE_PROJECT_ID_KEY, project.id);
       } catch {
         /* ignore */
       }
+
       writeHostedProfileComplete();
-      void navigate({ to: "/", replace: true });
+      void navigate({ to: "/connect-provider", replace: true });
     } catch (err) {
       setError(err instanceof Error ? err.message : "Something went wrong.");
     } finally {
+      setProvisioning(false);
       setBusy(false);
     }
   }
@@ -73,7 +92,7 @@ function OnboardingPage() {
           disabled={busy}
           className="w-full rounded border border-[#333333] bg-[#2B2B2B] px-4 py-3 text-sm font-medium text-white hover:bg-[#3D3D3D] disabled:opacity-50"
         >
-          {busy ? "Continuing…" : "Continue"}
+          {provisioning ? "Provisioning workspace…" : busy ? "Continuing…" : "Continue"}
         </button>
       </form>
     </HostedAuthPageChrome>

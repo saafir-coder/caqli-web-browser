@@ -1,6 +1,7 @@
 import { createFileRoute, redirect, useNavigate } from "@tanstack/react-router";
 import { useState } from "react";
 
+import { assertEmailMayRequestMagicLink } from "../hosted/checkHostedAccess";
 import { HostedAuthPageChrome } from "../hosted/HostedAuthPageChrome";
 import { isHostedAuthConfigured } from "../hosted/config";
 import { readHostedProfileComplete } from "../hosted/onboardingStorage";
@@ -39,6 +40,11 @@ function WelcomePage() {
       setError("Enter your email.");
       return;
     }
+    const access = assertEmailMayRequestMagicLink(trimmed);
+    if (!access.ok) {
+      setError(access.userMessage);
+      return;
+    }
     setBusy(true);
     try {
       const supabase = getSupabaseBrowserClient();
@@ -48,6 +54,9 @@ function WelcomePage() {
         options: { emailRedirectTo: redirectTo },
       });
       if (signErr) {
+        if (import.meta.env.DEV) {
+          console.error("[hosted auth] signInWithOtp failed", signErr);
+        }
         setError(signErr.message);
         return;
       }

@@ -4,18 +4,20 @@
 
 ## What to build
 
-**Spike** (documentation deliverable): Cursor Integrations / Cloud Agents API—credential type, scopes, whether agents can target a user **Hosted workspace**, runtime adapter sketch, and estimate to extend `ProviderKind`. No production **Cursor** connect in this slice.
+**HITL spike:** Produce `docs/cursor-provider-spike.md` covering Cursor Integrations / Cloud Agents API—credential type, scopes, whether agents can target a **Hosted workspace**, runtime adapter sketch, go/no-go, and estimate to extend `ProviderKind`. **No production Cursor connect** in this slice. **Connect provider** UI keeps **Cursor** as **Coming soon** until a follow-up implementation issue exists.
+
+Requires human review of API access, legal/terms, and product call—not fully AFK.
 
 ## Acceptance criteria
 
-- [ ] Written spike in `docs/` (e.g. `docs/cursor-provider-spike.md`) linked from PRD Further Notes.
-- [ ] States go/no-go and recommended credential flow (API key vs OAuth).
-- [ ] Lists dependencies for a follow-up implementation issue (**020** is Claude; Cursor would be **021** or amend registry after spike).
-- [ ] **Connect provider** UI can keep **Cursor** as **Coming soon** until follow-up ships.
+- [ ] Spike doc committed under `docs/` and linked from PRD Further Notes.
+- [ ] States recommended credential flow (API key vs OAuth) and dependencies for implementation.
+- [ ] Explicit go/no-go recommendation for MVP vs post-MVP.
+- [ ] **Connect provider** registry comments reference spike outcome.
 
 ## Blocked by
 
-None
+None - can start immediately.
 
 ## User stories addressed
 
@@ -23,4 +25,4 @@ None
 
 ## Type
 
-AFK
+HITL

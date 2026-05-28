@@ -9,16 +9,27 @@
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
 import { Route as rootRouteImport } from './routes/__root'
+import { Route as WelcomeRouteImport } from './routes/welcome'
 import { Route as SettingsRouteImport } from './routes/settings'
 import { Route as PairRouteImport } from './routes/pair'
+import { Route as OnboardingRouteImport } from './routes/onboarding'
+import { Route as ConnectProviderRouteImport } from './routes/connect-provider'
+import { Route as CheckEmailRouteImport } from './routes/check-email'
+import { Route as AccessDeniedRouteImport } from './routes/access-denied'
 import { Route as ChatRouteImport } from './routes/_chat'
 import { Route as ChatIndexRouteImport } from './routes/_chat.index'
 import { Route as SettingsGeneralRouteImport } from './routes/settings.general'
 import { Route as SettingsConnectionsRouteImport } from './routes/settings.connections'
 import { Route as SettingsArchivedRouteImport } from './routes/settings.archived'
+import { Route as AuthCallbackRouteImport } from './routes/auth.callback'
 import { Route as ChatDraftDraftIdRouteImport } from './routes/_chat.draft.$draftId'
 import { Route as ChatEnvironmentIdThreadIdRouteImport } from './routes/_chat.$environmentId.$threadId'
 
+const WelcomeRoute = WelcomeRouteImport.update({
+  id: '/welcome',
+  path: '/welcome',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const SettingsRoute = SettingsRouteImport.update({
   id: '/settings',
   path: '/settings',
@@ -27,6 +38,26 @@ const SettingsRoute = SettingsRouteImport.update({
 const PairRoute = PairRouteImport.update({
   id: '/pair',
   path: '/pair',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const OnboardingRoute = OnboardingRouteImport.update({
+  id: '/onboarding',
+  path: '/onboarding',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ConnectProviderRoute = ConnectProviderRouteImport.update({
+  id: '/connect-provider',
+  path: '/connect-provider',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const CheckEmailRoute = CheckEmailRouteImport.update({
+  id: '/check-email',
+  path: '/check-email',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const AccessDeniedRoute = AccessDeniedRouteImport.update({
+  id: '/access-denied',
+  path: '/access-denied',
   getParentRoute: () => rootRouteImport,
 } as any)
 const ChatRoute = ChatRouteImport.update({
@@ -53,6 +84,11 @@ const SettingsArchivedRoute = SettingsArchivedRouteImport.update({
   path: '/archived',
   getParentRoute: () => SettingsRoute,
 } as any)
+const AuthCallbackRoute = AuthCallbackRouteImport.update({
+  id: '/auth/callback',
+  path: '/auth/callback',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ChatDraftDraftIdRoute = ChatDraftDraftIdRouteImport.update({
   id: '/draft/$draftId',
   path: '/draft/$draftId',
@@ -67,8 +103,14 @@ const ChatEnvironmentIdThreadIdRoute =
 
 export interface FileRoutesByFullPath {
   '/': typeof ChatIndexRoute
+  '/access-denied': typeof AccessDeniedRoute
+  '/check-email': typeof CheckEmailRoute
+  '/connect-provider': typeof ConnectProviderRoute
+  '/onboarding': typeof OnboardingRoute
   '/pair': typeof PairRoute
   '/settings': typeof SettingsRouteWithChildren
+  '/welcome': typeof WelcomeRoute
+  '/auth/callback': typeof AuthCallbackRoute
   '/settings/archived': typeof SettingsArchivedRoute
   '/settings/connections': typeof SettingsConnectionsRoute
   '/settings/general': typeof SettingsGeneralRoute
@@ -76,8 +118,14 @@ export interface FileRoutesByFullPath {
   '/draft/$draftId': typeof ChatDraftDraftIdRoute
 }
 export interface FileRoutesByTo {
+  '/access-denied': typeof AccessDeniedRoute
+  '/check-email': typeof CheckEmailRoute
+  '/connect-provider': typeof ConnectProviderRoute
+  '/onboarding': typeof OnboardingRoute
   '/pair': typeof PairRoute
   '/settings': typeof SettingsRouteWithChildren
+  '/welcome': typeof WelcomeRoute
+  '/auth/callback': typeof AuthCallbackRoute
   '/settings/archived': typeof SettingsArchivedRoute
   '/settings/connections': typeof SettingsConnectionsRoute
   '/settings/general': typeof SettingsGeneralRoute
@@ -88,8 +136,14 @@ export interface FileRoutesByTo {
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/_chat': typeof ChatRouteWithChildren
+  '/access-denied': typeof AccessDeniedRoute
+  '/check-email': typeof CheckEmailRoute
+  '/connect-provider': typeof ConnectProviderRoute
+  '/onboarding': typeof OnboardingRoute
   '/pair': typeof PairRoute
   '/settings': typeof SettingsRouteWithChildren
+  '/welcome': typeof WelcomeRoute
+  '/auth/callback': typeof AuthCallbackRoute
   '/settings/archived': typeof SettingsArchivedRoute
   '/settings/connections': typeof SettingsConnectionsRoute
   '/settings/general': typeof SettingsGeneralRoute
@@ -101,8 +155,14 @@ export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
   fullPaths:
     | '/'
+    | '/access-denied'
+    | '/check-email'
+    | '/connect-provider'
+    | '/onboarding'
     | '/pair'
     | '/settings'
+    | '/welcome'
+    | '/auth/callback'
     | '/settings/archived'
     | '/settings/connections'
     | '/settings/general'
@@ -110,8 +170,14 @@ export interface FileRouteTypes {
     | '/draft/$draftId'
   fileRoutesByTo: FileRoutesByTo
   to:
+    | '/access-denied'
+    | '/check-email'
+    | '/connect-provider'
+    | '/onboarding'
     | '/pair'
     | '/settings'
+    | '/welcome'
+    | '/auth/callback'
     | '/settings/archived'
     | '/settings/connections'
     | '/settings/general'
@@ -121,8 +187,14 @@ export interface FileRouteTypes {
   id:
     | '__root__'
     | '/_chat'
+    | '/access-denied'
+    | '/check-email'
+    | '/connect-provider'
+    | '/onboarding'
     | '/pair'
     | '/settings'
+    | '/welcome'
+    | '/auth/callback'
     | '/settings/archived'
     | '/settings/connections'
     | '/settings/general'
@@ -133,12 +205,25 @@ export interface FileRouteTypes {
 }
 export interface RootRouteChildren {
   ChatRoute: typeof ChatRouteWithChildren
+  AccessDeniedRoute: typeof AccessDeniedRoute
+  CheckEmailRoute: typeof CheckEmailRoute
+  ConnectProviderRoute: typeof ConnectProviderRoute
+  OnboardingRoute: typeof OnboardingRoute
   PairRoute: typeof PairRoute
   SettingsRoute: typeof SettingsRouteWithChildren
+  WelcomeRoute: typeof WelcomeRoute
+  AuthCallbackRoute: typeof AuthCallbackRoute
 }
 
 declare module '@tanstack/react-router' {
   interface FileRoutesByPath {
+    '/welcome': {
+      id: '/welcome'
+      path: '/welcome'
+      fullPath: '/welcome'
+      preLoaderRoute: typeof WelcomeRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/settings': {
       id: '/settings'
       path: '/settings'
@@ -151,6 +236,34 @@ declare module '@tanstack/react-router' {
       path: '/pair'
       fullPath: '/pair'
       preLoaderRoute: typeof PairRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/onboarding': {
+      id: '/onboarding'
+      path: '/onboarding'
+      fullPath: '/onboarding'
+      preLoaderRoute: typeof OnboardingRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/connect-provider': {
+      id: '/connect-provider'
+      path: '/connect-provider'
+      fullPath: '/connect-provider'
+      preLoaderRoute: typeof ConnectProviderRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/check-email': {
+      id: '/check-email'
+      path: '/check-email'
+      fullPath: '/check-email'
+      preLoaderRoute: typeof CheckEmailRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/access-denied': {
+      id: '/access-denied'
+      path: '/access-denied'
+      fullPath: '/access-denied'
+      preLoaderRoute: typeof AccessDeniedRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/_chat': {
@@ -187,6 +300,13 @@ declare module '@tanstack/react-router' {
       fullPath: '/settings/archived'
       preLoaderRoute: typeof SettingsArchivedRouteImport
       parentRoute: typeof SettingsRoute
+    }
+    '/auth/callback': {
+      id: '/auth/callback'
+      path: '/auth/callback'
+      fullPath: '/auth/callback'
+      preLoaderRoute: typeof AuthCallbackRouteImport
+      parentRoute: typeof rootRouteImport
     }
     '/_chat/draft/$draftId': {
       id: '/_chat/draft/$draftId'
@@ -237,8 +357,14 @@ const SettingsRouteWithChildren = SettingsRoute._addFileChildren(
 
 const rootRouteChildren: RootRouteChildren = {
   ChatRoute: ChatRouteWithChildren,
+  AccessDeniedRoute: AccessDeniedRoute,
+  CheckEmailRoute: CheckEmailRoute,
+  ConnectProviderRoute: ConnectProviderRoute,
+  OnboardingRoute: OnboardingRoute,
   PairRoute: PairRoute,
   SettingsRoute: SettingsRouteWithChildren,
+  WelcomeRoute: WelcomeRoute,
+  AuthCallbackRoute: AuthCallbackRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)

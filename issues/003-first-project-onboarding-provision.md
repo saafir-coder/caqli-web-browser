@@ -20,8 +20,8 @@ When an authenticated **User** has **zero Projects**, show a single **Name your 
 
 ## User stories addressed
 
-- 6, 7, 40, 42
-- Partial: 31
+- 6, 7
+- Partial: 42
 
 ## Type
 

@@ -9,5 +9,25 @@ export function isHostedAuthConfigured(): boolean {
 }
 
 export function isPublicHostedAuthPath(pathname: string): boolean {
-  return pathname === "/welcome" || pathname === "/check-email" || pathname.startsWith("/auth/");
+  return (
+    pathname === "/welcome" ||
+    pathname === "/check-email" ||
+    pathname === "/access-denied" ||
+    pathname.startsWith("/auth/")
+  );
+}
+
+/**
+ * Hosted routes that must not hit the T3 HTTP API until the user has a Supabase
+ * session (or we're on a public magic-link screen). Otherwise `fetch` targets
+ * fall through to Vite's SPA HTML and blow up on `response.json()`.
+ */
+export function isHostedT3DeferredPath(pathname: string): boolean {
+  return (
+    pathname === "/" ||
+    pathname === "/onboarding" ||
+    pathname === "/connect-provider" ||
+    pathname.startsWith("/settings") ||
+    isPublicHostedAuthPath(pathname)
+  );
 }

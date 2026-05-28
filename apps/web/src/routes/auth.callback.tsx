@@ -1,6 +1,7 @@
 import { createFileRoute, redirect, useNavigate } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 
+import { assertSessionMayEnterApp } from "../hosted/checkHostedAccess";
 import { HostedAuthPageChrome } from "../hosted/HostedAuthPageChrome";
 import { readHostedProfileComplete } from "../hosted/onboardingStorage";
 import { isHostedAuthConfigured } from "../hosted/config";
@@ -33,6 +34,12 @@ function AuthCallbackPage() {
         }
         if (!session) {
           setMessage("No active session. Request a new link from the welcome page.");
+          return;
+        }
+        const access = assertSessionMayEnterApp(session.user.email);
+        if (!access.ok) {
+          await supabase.auth.signOut();
+          setMessage(access.userMessage);
           return;
         }
         if (readHostedProfileComplete()) {

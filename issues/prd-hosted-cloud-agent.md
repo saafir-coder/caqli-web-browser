@@ -105,20 +105,20 @@ Mobile **Client** remains responsive web (PWA later); single deployable product 
 
 ### Modules (deep modules to build or extend)
 
-| Module | Responsibility | Notes |
-|--------|----------------|-------|
-| **Provider credential vault** | Accept connect input, envelope-encrypt, persist ciphertext, expose “connected / not” flags only to client, decrypt in execution layer for outbound calls | Master key via env/KMS; never log plaintext |
-| **Hosted pool coordinator** | Map **Project** → workspace path on pool; health checks; optional assignment of **Environment** to pool node | Idempotent provision on project create |
-| **Connect provider flow** | Onboarding route + API after first **Project**; renders Cursor/Codex/Claude Code rows with status | Port Stitch from meta onboarding reference |
-| **Agent provider registry** | Known providers, launch order, “coming soon” vs active, maps to runtime `ProviderKind` + future Cursor kind | Codex dogfood gate |
-| **BYO outbound proxy** | When **Agent run** starts, resolve **Thread provider**, load ciphertext, decrypt in memory, inject into Codex/Claude adapters | Align with existing provider manager |
-| **Default / thread provider policy** | Account default; per-thread binding at creation; reject provider swap mid-thread in MVP | Pure decision module testable without UI |
-| **Agent run concurrency gate** | Enforce one active run per **Project** (dogfood); configurable cap before public | Server-side source of truth |
-| **Usage gate (hosted compute)** | Daily Caqli compute budget separate from BYO; soft-block UX | Extends issue 009 |
-| **Access control** | Invite allowlist for dogfood; waitlist capture + operator approve for public v1 | Supabase RLS or server flags |
-| **Hosted auth client** | From shell PRD (issue 001) | Outer gate for all modules |
-| **Workspace provisioning coordinator** | From issue 003; empty workspace default | GitHub import hooks later |
-| **Session resume controller** | From issue 004 | Unchanged intent |
+| Module                                 | Responsibility                                                                                                                                           | Notes                                       |
+| -------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------- |
+| **Provider credential vault**          | Accept connect input, envelope-encrypt, persist ciphertext, expose “connected / not” flags only to client, decrypt in execution layer for outbound calls | Master key via env/KMS; never log plaintext |
+| **Hosted pool coordinator**            | Map **Project** → workspace path on pool; health checks; optional assignment of **Environment** to pool node                                             | Idempotent provision on project create      |
+| **Connect provider flow**              | Onboarding route + API after first **Project**; renders Cursor/Codex/Claude Code rows with status                                                        | Port Stitch from meta onboarding reference  |
+| **Agent provider registry**            | Known providers, launch order, “coming soon” vs active, maps to runtime `ProviderKind` + future Cursor kind                                              | Codex dogfood gate                          |
+| **BYO outbound proxy**                 | When **Agent run** starts, resolve **Thread provider**, load ciphertext, decrypt in memory, inject into Codex/Claude adapters                            | Align with existing provider manager        |
+| **Default / thread provider policy**   | Account default; per-thread binding at creation; reject provider swap mid-thread in MVP                                                                  | Pure decision module testable without UI    |
+| **Agent run concurrency gate**         | Enforce one active run per **Project** (dogfood); configurable cap before public                                                                         | Server-side source of truth                 |
+| **Usage gate (hosted compute)**        | Daily Caqli compute budget separate from BYO; soft-block UX                                                                                              | Extends issue 009                           |
+| **Access control**                     | Invite allowlist for dogfood; waitlist capture + operator approve for public v1                                                                          | Supabase RLS or server flags                |
+| **Hosted auth client**                 | From shell PRD (issue 001)                                                                                                                               | Outer gate for all modules                  |
+| **Workspace provisioning coordinator** | From issue 003; empty workspace default                                                                                                                  | GitHub import hooks later                   |
+| **Session resume controller**          | From issue 004                                                                                                                                           | Unchanged intent                            |
 
 Check with implementer: these module boundaries are targets; merge or split if the codebase already has overlapping layers.
 

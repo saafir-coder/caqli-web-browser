@@ -7,7 +7,9 @@ export function isHostedMinimalChromePath(pathname: string): boolean {
     pathname === "/pair" ||
     pathname === "/welcome" ||
     pathname === "/check-email" ||
+    pathname === "/access-denied" ||
     pathname.startsWith("/auth/") ||
-    pathname === "/onboarding"
+    pathname === "/onboarding" ||
+    pathname === "/connect-provider"
   );
 }
