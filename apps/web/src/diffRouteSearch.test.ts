@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { parseDiffRouteSearch } from "./diffRouteSearch";
+import { isDiffRouteOpen, parseDiffRouteSearch } from "./diffRouteSearch";
 
 describe("parseDiffRouteSearch", () => {
   it("parses valid diff search values", () => {
@@ -15,6 +15,11 @@ describe("parseDiffRouteSearch", () => {
       diffTurnId: "turn-1",
       diffFilePath: "src/app.ts",
     });
+  });
+
+  it("treats json-encoded diff toggles as open", () => {
+    expect(parseDiffRouteSearch({ diff: '"1"' })).toEqual({ diff: "1" });
+    expect(isDiffRouteOpen({ diff: '"1"' })).toBe(true);
   });
 
   it("treats numeric and boolean diff toggles as open", () => {

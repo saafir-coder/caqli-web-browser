@@ -35,6 +35,7 @@ interface ChatHeaderProps {
   diffToggleShortcutLabel: string | null;
   gitCwd: string | null;
   diffOpen: boolean;
+  diffChangedFileCount?: number;
   onRunProjectScript: (script: ProjectScript) => void;
   onAddProjectScript: (input: NewProjectScriptInput) => Promise<void>;
   onUpdateProjectScript: (scriptId: string, input: NewProjectScriptInput) => Promise<void>;
@@ -61,6 +62,7 @@ export const ChatHeader = memo(function ChatHeader({
   diffToggleShortcutLabel,
   gitCwd,
   diffOpen,
+  diffChangedFileCount,
   onRunProjectScript,
   onAddProjectScript,
   onUpdateProjectScript,
@@ -142,17 +144,32 @@ export const ChatHeader = memo(function ChatHeader({
         <Tooltip>
           <TooltipTrigger
             render={
-              <Toggle
-                className="shrink-0"
-                pressed={diffOpen}
-                onPressedChange={onToggleDiff}
-                aria-label="Toggle diff panel"
-                variant="outline"
-                size="xs"
-                disabled={!isGitRepo}
-              >
-                <DiffIcon className="size-3" />
-              </Toggle>
+              <span className="relative inline-flex shrink-0">
+                <Toggle
+                  className="shrink-0"
+                  pressed={diffOpen}
+                  onPressedChange={(pressed) => {
+                    if (pressed !== diffOpen) {
+                      onToggleDiff();
+                    }
+                  }}
+                  aria-label={
+                    diffChangedFileCount && diffChangedFileCount > 0
+                      ? `Toggle diff panel (${diffChangedFileCount} changed files)`
+                      : "Toggle diff panel"
+                  }
+                  variant="outline"
+                  size="xs"
+                  disabled={!isGitRepo}
+                >
+                  <DiffIcon className="size-3" />
+                </Toggle>
+                {diffChangedFileCount && diffChangedFileCount > 0 ? (
+                  <span className="pointer-events-none absolute -top-1.5 -right-1.5 min-w-[1rem] rounded-full bg-primary px-1 text-center font-mono text-[9px] leading-4 text-primary-foreground">
+                    {diffChangedFileCount > 99 ? "99+" : diffChangedFileCount}
+                  </span>
+                ) : null}
+              </span>
             }
           />
           <TooltipPopup side="bottom">

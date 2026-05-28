@@ -1,17 +1,22 @@
-import { createFileRoute, useNavigate } from "@tanstack/react-router";
+import { createFileRoute, retainSearchParams, useNavigate } from "@tanstack/react-router";
 import { useEffect, useMemo } from "react";
+
 import ChatView from "../components/ChatView";
+import { ChatDiffRouteShell } from "../components/chat/ChatDiffRouteShell";
 import { threadHasStarted } from "../components/ChatView.logic";
-import { useComposerDraftStore, DraftId } from "../composerDraftStore";
-import { SidebarInset } from "../components/ui/sidebar";
+import { finalizePromotedDraftThreadByRef, useComposerDraftStore, DraftId } from "../composerDraftStore";
+import { type DiffRouteSearch, parseDiffRouteSearch } from "../diffRouteSearch";
+import { useDiffRouteController } from "../hooks/useDiffRouteController";
 import { createThreadSelectorAcrossEnvironments } from "../storeSelectors";
 import { useStore } from "../store";
 import { buildThreadRouteParams } from "../threadRoutes";
+import { isDiffRouteOpen } from "../lib/diffRouteController";
 
 function DraftChatThreadRouteView() {
   const navigate = useNavigate();
   const { draftId: rawDraftId } = Route.useParams();
   const draftId = DraftId.make(rawDraftId);
+  const search = Route.useSearch();
   const draftSession = useComposerDraftStore((store) => store.getDraftSession(draftId));
   const serverThread = useStore(
     useMemo(
@@ -35,6 +40,12 @@ function DraftChatThreadRouteView() {
     [draftSession?.promotedTo, serverThread, serverThreadStarted],
   );
 
+  const diffRoute = useDiffRouteController(
+    draftSession ? { kind: "draft", draftId } : null,
+    `draft:${draftId}`,
+  );
+  const diffOpen = isDiffRouteOpen(search);
+
   useEffect(() => {
     if (!canonicalThreadRef) {
       return;
@@ -43,8 +54,9 @@ function DraftChatThreadRouteView() {
       to: "/$environmentId/$threadId",
       params: buildThreadRouteParams(canonicalThreadRef),
       replace: true,
+      ...(diffOpen ? { search: { diff: "1" as const } } : {}),
     });
-  }, [canonicalThreadRef, navigate]);
+  }, [canonicalThreadRef, diffOpen, navigate]);
 
   useEffect(() => {
     if (draftSession || canonicalThreadRef) {
@@ -54,15 +66,7 @@ function DraftChatThreadRouteView() {
   }, [canonicalThreadRef, draftSession, navigate]);
 
   if (canonicalThreadRef) {
-    return (
-      <SidebarInset className="h-dvh min-h-0 overflow-hidden overscroll-y-none bg-background text-foreground">
-        <ChatView
-          environmentId={canonicalThreadRef.environmentId}
-          threadId={canonicalThreadRef.threadId}
-          routeKind="server"
-        />
-      </SidebarInset>
-    );
+    return null;
   }
 
   if (!draftSession) {
@@ -70,17 +74,29 @@ function DraftChatThreadRouteView() {
   }
 
   return (
-    <SidebarInset className="h-dvh min-h-0 overflow-hidden overscroll-y-none bg-background text-foreground">
+    <ChatDiffRouteShell
+      diffOpen={diffRoute.diffOpen}
+      onCloseDiff={diffRoute.closeDiff}
+      onOpenDiff={diffRoute.openDiff}
+      shouldRenderDiffContent={diffRoute.shouldRenderDiffContent}
+      reserveTitleBarControlInset={!diffRoute.diffOpen}
+    >
       <ChatView
         draftId={draftId}
         environmentId={draftSession.environmentId}
         threadId={draftSession.threadId}
+        onDiffPanelOpen={diffRoute.markDiffOpened}
+        reserveTitleBarControlInset={!diffRoute.diffOpen}
         routeKind="draft"
       />
-    </SidebarInset>
+    </ChatDiffRouteShell>
   );
 }
 
 export const Route = createFileRoute("/_chat/draft/$draftId")({
+  validateSearch: (search) => parseDiffRouteSearch(search),
+  search: {
+    middlewares: [retainSearchParams<DiffRouteSearch>(["diff"])],
+  },
   component: DraftChatThreadRouteView,
 });

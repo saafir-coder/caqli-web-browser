@@ -1,9 +1,8 @@
 import { parsePatchFiles } from "@pierre/diffs";
 import { FileDiff, type FileDiffMetadata, Virtualizer } from "@pierre/diffs/react";
 import { useQuery } from "@tanstack/react-query";
-import { useNavigate, useParams, useSearch } from "@tanstack/react-router";
-import { scopeThreadRef } from "@t3tools/client-runtime";
-import type { TurnId } from "@t3tools/contracts";
+import { useParams } from "@tanstack/react-router";
+import { TurnId } from "@t3tools/contracts";
 import {
   ChevronLeftIcon,
   ChevronRightIcon,
@@ -20,19 +19,22 @@ import {
   useState,
 } from "react";
 import { openInPreferredEditor } from "../editorPreferences";
+import { ChangedFilesTree } from "./chat/ChangedFilesTree";
+import { mapWorkingTreeFiles } from "../hosted/workspace/mapWorkingTreeFiles";
+import { useActiveThreadContext } from "../hooks/useActiveThreadContext";
+import { useDiffRouteController } from "../hooks/useDiffRouteController";
 import { useGitStatus } from "~/lib/gitStatusState";
+import { diffRouteTargetFromThread } from "../lib/diffRouteController";
+import { resolveThreadChangesView } from "../lib/threadChangesViewModel";
 import { checkpointDiffQueryOptions } from "~/lib/providerReactQuery";
 import { cn } from "~/lib/utils";
 import { readLocalApi } from "../localApi";
 import { resolvePathLinkTarget } from "../terminal-links";
-import { parseDiffRouteSearch, stripDiffSearchParams } from "../diffRouteSearch";
 import { useTheme } from "../hooks/useTheme";
 import { buildPatchCacheKey } from "../lib/diffRendering";
 import { resolveDiffThemeName } from "../lib/diffRendering";
 import { useTurnDiffSummaries } from "../hooks/useTurnDiffSummaries";
-import { selectProjectByRef, useStore } from "../store";
-import { createThreadSelectorByRef } from "../storeSelectors";
-import { buildThreadRouteParams, resolveThreadRouteRef } from "../threadRoutes";
+import { DraftId } from "../composerDraftStore";
 import { useSettings } from "../hooks/useSettings";
 import { formatShortTimestamp } from "../timestampFormat";
 import { DiffPanelLoadingState, DiffPanelShell, type DiffPanelMode } from "./DiffPanelShell";
@@ -167,7 +169,30 @@ interface DiffPanelProps {
 export { DiffWorkerPoolProvider } from "./DiffWorkerPoolProvider";
 
 export default function DiffPanel({ mode = "inline" }: DiffPanelProps) {
-  const navigate = useNavigate();
+  const routeParams = useParams({ strict: false });
+  const rawDraftId = routeParams.draftId;
+  const draftId =
+    typeof rawDraftId === "string" && rawDraftId.length > 0 ? DraftId.make(rawDraftId) : null;
+  const threadContext = useActiveThreadContext(
+    draftId ? { draftId, routeKind: "draft" } : undefined,
+  );
+  const { activeThread, routeThreadRef, gitCwd } = threadContext;
+  const diffTarget = useMemo(() => {
+    if (!activeThread || !routeThreadRef) {
+      return null;
+    }
+    return diffRouteTargetFromThread({
+      draftId,
+      environmentId: routeThreadRef.environmentId,
+      threadId: routeThreadRef.threadId,
+      routeKind: draftId ? "draft" : "server",
+    });
+  }, [activeThread, draftId, routeThreadRef]);
+  const diffRoute = useDiffRouteController(
+    diffTarget,
+    routeThreadRef ? `${routeThreadRef.environmentId}:${routeThreadRef.threadId}` : null,
+  );
+  const { diffSearch, diffOpen, selectTurn, selectWholeConversation } = diffRoute;
   const { resolvedTheme } = useTheme();
   const settings = useSettings();
   const [diffRenderMode, setDiffRenderMode] = useState<DiffRenderMode>("stacked");
@@ -177,33 +202,27 @@ export default function DiffPanel({ mode = "inline" }: DiffPanelProps) {
   const previousDiffOpenRef = useRef(false);
   const [canScrollTurnStripLeft, setCanScrollTurnStripLeft] = useState(false);
   const [canScrollTurnStripRight, setCanScrollTurnStripRight] = useState(false);
-  const routeThreadRef = useParams({
-    strict: false,
-    select: (params) => resolveThreadRouteRef(params),
-  });
-  const diffSearch = useSearch({ strict: false, select: (search) => parseDiffRouteSearch(search) });
-  const diffOpen = diffSearch.diff === "1";
   const activeThreadId = routeThreadRef?.threadId ?? null;
-  const activeThread = useStore(
-    useMemo(() => createThreadSelectorByRef(routeThreadRef), [routeThreadRef]),
-  );
-  const activeProjectId = activeThread?.projectId ?? null;
-  const activeProject = useStore((store) =>
-    activeThread && activeProjectId
-      ? selectProjectByRef(store, {
-          environmentId: activeThread.environmentId,
-          projectId: activeProjectId,
-        })
-      : undefined,
-  );
-  const activeCwd = activeThread?.worktreePath ?? activeProject?.cwd;
   const gitStatusQuery = useGitStatus({
-    environmentId: activeThread?.environmentId ?? null,
-    cwd: activeCwd ?? null,
+    environmentId: threadContext.environmentId,
+    cwd: gitCwd,
   });
   const isGitRepo = gitStatusQuery.data?.isRepo ?? true;
+  const workingTreeFiles = useMemo(
+    () => mapWorkingTreeFiles(gitStatusQuery.data?.workingTree.files ?? []),
+    [gitStatusQuery.data?.workingTree.files],
+  );
   const { turnDiffSummaries, inferredCheckpointTurnCountByTurnId } =
     useTurnDiffSummaries(activeThread);
+  const threadChanges = useMemo(
+    () =>
+      resolveThreadChangesView({
+        isGitRepo,
+        turnDiffSummaries,
+        workingTreeFiles,
+      }),
+    [isGitRepo, turnDiffSummaries, workingTreeFiles],
+  );
   const orderedTurnDiffSummaries = useMemo(
     () =>
       [...turnDiffSummaries].toSorted((left, right) => {
@@ -218,6 +237,7 @@ export default function DiffPanel({ mode = "inline" }: DiffPanelProps) {
       }),
     [inferredCheckpointTurnCountByTurnId, turnDiffSummaries],
   );
+  const showWorkingTreeOnly = threadChanges.mode === "workingTree";
 
   const selectedTurnId = diffSearch.diffTurnId ?? null;
   const selectedFilePath = selectedTurnId !== null ? (diffSearch.diffFilePath ?? null) : null;
@@ -335,35 +355,19 @@ export default function DiffPanel({ mode = "inline" }: DiffPanelProps) {
     (filePath: string) => {
       const api = readLocalApi();
       if (!api) return;
-      const targetPath = activeCwd ? resolvePathLinkTarget(filePath, activeCwd) : filePath;
+      const targetPath = gitCwd ? resolvePathLinkTarget(filePath, gitCwd) : filePath;
       void openInPreferredEditor(api, targetPath).catch((error) => {
         console.warn("Failed to open diff file in editor.", error);
       });
     },
-    [activeCwd],
+    [gitCwd],
   );
 
-  const selectTurn = (turnId: TurnId) => {
-    if (!activeThread) return;
-    void navigate({
-      to: "/$environmentId/$threadId",
-      params: buildThreadRouteParams(scopeThreadRef(activeThread.environmentId, activeThread.id)),
-      search: (previous) => {
-        const rest = stripDiffSearchParams(previous);
-        return { ...rest, diff: "1", diffTurnId: turnId };
-      },
-    });
-  };
-  const selectWholeConversation = () => {
-    if (!activeThread) return;
-    void navigate({
-      to: "/$environmentId/$threadId",
-      params: buildThreadRouteParams(scopeThreadRef(activeThread.environmentId, activeThread.id)),
-      search: (previous) => {
-        const rest = stripDiffSearchParams(previous);
-        return { ...rest, diff: "1" };
-      },
-    });
+  const onSelectTurn = (turnId: TurnId) => {
+    if (!activeThread) {
+      return;
+    }
+    selectTurn(turnId);
   };
   const updateTurnStripScrollState = useCallback(() => {
     const element = turnStripRef.current;
@@ -472,7 +476,7 @@ export default function DiffPanel({ mode = "inline" }: DiffPanelProps) {
           <button
             type="button"
             className="shrink-0 rounded-md"
-            onClick={selectWholeConversation}
+            onClick={() => selectWholeConversation()}
             data-turn-chip-selected={selectedTurnId === null}
           >
             <div
@@ -491,7 +495,7 @@ export default function DiffPanel({ mode = "inline" }: DiffPanelProps) {
               key={summary.turnId}
               type="button"
               className="shrink-0 rounded-md"
-              onClick={() => selectTurn(summary.turnId)}
+              onClick={() => onSelectTurn(summary.turnId)}
               title={summary.turnId}
               data-turn-chip-selected={summary.turnId === selectedTurn?.turnId}
             >
@@ -561,11 +565,33 @@ export default function DiffPanel({ mode = "inline" }: DiffPanelProps) {
         <div className="flex flex-1 items-center justify-center px-5 text-center text-xs text-muted-foreground/70">
           Select a thread to inspect turn diffs.
         </div>
-      ) : !isGitRepo ? (
+      ) : threadChanges.mode === "notGitRepo" ? (
         <div className="flex flex-1 items-center justify-center px-5 text-center text-xs text-muted-foreground/70">
           Turn diffs are unavailable because this project is not a git repository.
         </div>
-      ) : orderedTurnDiffSummaries.length === 0 ? (
+      ) : showWorkingTreeOnly ? (
+        <div className="flex min-h-0 flex-1 flex-col overflow-hidden px-3 py-2">
+          <p className="mb-2 text-[11px] text-muted-foreground/75">
+            Working tree changes ({workingTreeFiles.length} files). Turn diffs appear after you send
+            a message.
+          </p>
+          <div className="min-h-0 flex-1 overflow-auto rounded-lg border border-border/80 bg-card/45 p-2.5">
+            {activeThreadId ? (
+              <ChangedFilesTree
+                turnId={TurnId.make("working-tree")}
+                files={workingTreeFiles}
+                allDirectoriesExpanded={false}
+                resolvedTheme={resolvedTheme}
+                onOpenTurnDiff={(_turnId, filePath) => {
+                  if (filePath) {
+                    openDiffFileInEditor(filePath);
+                  }
+                }}
+              />
+            ) : null}
+          </div>
+        </div>
+      ) : threadChanges.mode === "empty" ? (
         <div className="flex flex-1 items-center justify-center px-5 text-center text-xs text-muted-foreground/70">
           No completed turns yet.
         </div>

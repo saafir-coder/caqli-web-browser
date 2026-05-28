@@ -37,7 +37,9 @@ import { usePrimaryEnvironmentId } from "../environments/primary";
 import { readEnvironmentApi } from "../environmentApi";
 import { isElectron } from "../env";
 import { readLocalApi } from "../localApi";
-import { parseDiffRouteSearch, stripDiffSearchParams } from "../diffRouteSearch";
+import { useActiveThreadContext } from "../hooks/useActiveThreadContext";
+import { useDiffRouteController } from "../hooks/useDiffRouteController";
+import { diffRouteTargetFromThread } from "../lib/diffRouteController";
 import {
   collapseExpandedComposerCursor,
   parseStandaloneComposerSlashCommand,
@@ -144,7 +146,6 @@ import { ThreadErrorBanner } from "./chat/ThreadErrorBanner";
 import {
   MAX_HIDDEN_MOUNTED_TERMINAL_THREADS,
   buildExpiredTerminalContextToastCopy,
-  buildLocalDraftThread,
   collectUserMessageBlobPreviewUrls,
   createLocalDispatchSnapshot,
   deriveComposerSendState,
@@ -610,10 +611,6 @@ export default function ChatView(props: ChatViewProps) {
   );
   const timestampFormat = settings.timestampFormat;
   const navigate = useNavigate();
-  const rawSearch = useSearch({
-    strict: false,
-    select: (params) => parseDiffRouteSearch(params),
-  });
   const { resolvedTheme } = useTheme();
   // Granular store selectors — avoid subscribing to prompt changes.
   const composerRuntimeMode = useComposerDraftStore(
@@ -751,39 +748,35 @@ export default function ChatView(props: ChatViewProps) {
     [mountedTerminalThreadKeys],
   );
 
-  const fallbackDraftProjectRef = draftThread
-    ? scopeProjectRef(draftThread.environmentId, draftThread.projectId)
-    : null;
-  const fallbackDraftProject = useStore(
-    useMemo(() => createProjectSelectorByRef(fallbackDraftProjectRef), [fallbackDraftProjectRef]),
-  );
   const localDraftError =
     routeKind === "server" && serverThread
       ? null
       : ((draftId ? localDraftErrorsByDraftId[draftId] : null) ?? null);
-  const localDraftThread = useMemo(
-    () =>
-      draftThread
-        ? buildLocalDraftThread(
-            threadId,
-            draftThread,
-            fallbackDraftProject?.defaultModelSelection ?? {
-              provider: "codex",
-              model: DEFAULT_MODEL_BY_PROVIDER.codex,
-            },
-            localDraftError,
-          )
-        : undefined,
-    [draftThread, fallbackDraftProject?.defaultModelSelection, localDraftError, threadId],
+  const threadContext = useActiveThreadContext({
+    routeThreadRef,
+    routeKind,
+    draftId,
+    localDraftError,
+  });
+  const { activeThread, isServerThread, isLocalDraftThread, activeProject, gitCwd } = threadContext;
+  const diffRoute = useDiffRouteController(
+    useMemo(
+      () =>
+        diffRouteTargetFromThread({
+          routeKind,
+          draftId,
+          environmentId,
+          threadId,
+        }),
+      [draftId, environmentId, routeKind, threadId],
+    ),
+    routeThreadKey,
   );
-  const isServerThread = routeKind === "server" && serverThread !== undefined;
-  const activeThread = isServerThread ? serverThread : localDraftThread;
+  const diffOpen = diffRoute.diffOpen;
   const runtimeMode = composerRuntimeMode ?? activeThread?.runtimeMode ?? DEFAULT_RUNTIME_MODE;
   const interactionMode =
     composerInteractionMode ?? activeThread?.interactionMode ?? DEFAULT_INTERACTION_MODE;
-  const isLocalDraftThread = !isServerThread && localDraftThread !== undefined;
   const canCheckoutPullRequestIntoThread = isLocalDraftThread;
-  const diffOpen = rawSearch.diff === "1";
   const activeThreadId = activeThread?.id ?? null;
   const activeThreadRef = useMemo(
     () => (activeThread ? scopeThreadRef(activeThread.environmentId, activeThread.id) : null),
@@ -824,13 +817,6 @@ export default function ChatView(props: ChatViewProps) {
     });
   }, [activeThreadKey, existingOpenTerminalThreadKeys, terminalState.terminalOpen]);
   const latestTurnSettled = isLatestTurnSettled(activeLatestTurn, activeThread?.session ?? null);
-  const activeProjectRef = activeThread
-    ? scopeProjectRef(activeThread.environmentId, activeThread.projectId)
-    : null;
-  const activeProject = useStore(
-    useMemo(() => createProjectSelectorByRef(activeProjectRef), [activeProjectRef]),
-  );
-
   useEffect(() => {
     if (routeKind !== "server") {
       return;
@@ -1396,12 +1382,6 @@ export default function ChatView(props: ChatViewProps) {
     if (!completionSummary) return null;
     return deriveCompletionDividerBeforeEntryId(timelineEntries, activeLatestTurn);
   }, [activeLatestTurn, completionSummary, latestTurnSettled, timelineEntries]);
-  const gitCwd = activeProject
-    ? projectScriptCwd({
-        project: { cwd: activeProject.cwd },
-        worktreePath: activeThread?.worktreePath ?? null,
-      })
-    : null;
   const gitStatusQuery = useGitStatus({ environmentId, cwd: gitCwd });
   const keybindings = useServerKeybindings();
   const availableEditors = useServerAvailableEditors();
@@ -1418,6 +1398,7 @@ export default function ChatView(props: ChatViewProps) {
       : (storeServerTerminalLaunchContext ?? null);
   // Default true while loading to avoid toolbar flicker.
   const isGitRepo = gitStatusQuery.data?.isRepo ?? true;
+  const diffChangedFileCount = gitStatusQuery.data?.workingTree.files.length ?? 0;
   const terminalShortcutLabelOptions = useMemo(
     () => ({
       context: {
@@ -1457,25 +1438,13 @@ export default function ChatView(props: ChatViewProps) {
     [keybindings, nonTerminalShortcutLabelOptions],
   );
   const onToggleDiff = useCallback(() => {
-    if (!isServerThread) {
-      return;
-    }
     if (!diffOpen) {
       onDiffPanelOpen?.();
     }
-    void navigate({
-      to: "/$environmentId/$threadId",
-      params: {
-        environmentId,
-        threadId,
-      },
-      replace: true,
-      search: (previous) => {
-        const rest = stripDiffSearchParams(previous);
-        return diffOpen ? { ...rest, diff: undefined } : { ...rest, diff: "1" };
-      },
-    });
-  }, [diffOpen, environmentId, isServerThread, navigate, onDiffPanelOpen, threadId]);
+    if (routeKind === "draft" || isServerThread) {
+      diffRoute.toggleDiff({ replace: true });
+    }
+  }, [diffOpen, diffRoute, isServerThread, onDiffPanelOpen, routeKind]);
 
   const envLocked = Boolean(
     activeThread &&
@@ -3143,25 +3112,12 @@ export default function ChatView(props: ChatViewProps) {
   }, []);
   const onOpenTurnDiff = useCallback(
     (turnId: TurnId, filePath?: string) => {
-      if (!isServerThread) {
-        return;
-      }
       onDiffPanelOpen?.();
-      void navigate({
-        to: "/$environmentId/$threadId",
-        params: {
-          environmentId,
-          threadId,
-        },
-        search: (previous) => {
-          const rest = stripDiffSearchParams(previous);
-          return filePath
-            ? { ...rest, diff: "1", diffTurnId: turnId, diffFilePath: filePath }
-            : { ...rest, diff: "1", diffTurnId: turnId };
-        },
-      });
+      if (routeKind === "draft" || isServerThread) {
+        diffRoute.openTurnDiff(filePath ? { turnId, filePath } : { turnId });
+      }
     },
-    [environmentId, isServerThread, navigate, onDiffPanelOpen, threadId],
+    [diffRoute, isServerThread, onDiffPanelOpen, routeKind],
   );
   // Both the Map and the revert handler are read from refs at call-time so
   // the callback reference is fully stable and never busts context identity.
@@ -3219,6 +3175,7 @@ export default function ChatView(props: ChatViewProps) {
           diffToggleShortcutLabel={diffPanelShortcutLabel}
           gitCwd={gitCwd}
           diffOpen={diffOpen}
+          {...(diffChangedFileCount > 0 ? { diffChangedFileCount } : {})}
           onRunProjectScript={runProjectScript}
           onAddProjectScript={saveProjectScript}
           onUpdateProjectScript={updateProjectScript}
