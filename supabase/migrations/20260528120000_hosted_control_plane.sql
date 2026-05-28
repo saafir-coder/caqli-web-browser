@@ -4,9 +4,10 @@ create table public.hosted_projects (
   id uuid primary key default gen_random_uuid(),
   user_id uuid not null references auth.users (id) on delete cascade,
   name text not null,
-  workspace_path text not null unique,
+  workspace_path text not null,
   created_at timestamptz not null default now(),
-  unique (user_id, name)
+  constraint hosted_projects_workspace_path_key unique (workspace_path),
+  constraint hosted_projects_user_id_name_key unique (user_id, name)
 );
 
 create index hosted_projects_user_id_idx on public.hosted_projects (user_id);
