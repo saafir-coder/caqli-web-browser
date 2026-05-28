@@ -51,3 +51,13 @@ Docs:
 - Codex-Monitor (Tauri, feature-complete, strong reference implementation): https://github.com/Dimillian/CodexMonitor
 
 Use these as implementation references when designing protocol handling, UX flows, and operational safeguards.
+
+## Caqli meta repo (MCP, greploop, Stitch)
+
+This product is often opened as `products/caqli-web-browser` inside the [Caqli meta repo](https://github.com/saafir-coder/caqli) (`../..` from here). Shared agent tooling lives at the meta root:
+
+- **MCP:** [`.cursor/mcp.json`](../../.cursor/mcp.json) — Greptile + Stitch (bridged via [`.cursor/mcp.json`](.cursor/mcp.json) in this folder when the workspace root is the product)
+- **Secrets:** meta-root `.env` (`greptile-api-key`, `STITCH_API_KEY`) — see [docs/greploop-setup.md](../../docs/greploop-setup.md) and [docs/stitch-mcp.md](../../docs/stitch-mcp.md)
+- **Skills:** [`.cursor/skills/greploop/`](../../.cursor/skills/greploop/SKILL.md), [`.cursor/skills/greptile/`](../../.cursor/skills/greptile/greploop/SKILL.md)
+
+For **greploop** on PRs in `saafir-coder/caqli-web-browser`, run `/greploop` or ask to run greploop; reload Cursor after MCP config changes so **greptile** shows green under Settings → MCP.
