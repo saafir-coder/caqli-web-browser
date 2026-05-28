@@ -60,7 +60,9 @@ import {
   authSessionRouteLayer,
   authWebSocketTokenRouteLayer,
 } from "./auth/http";
+import { SessionCredentialServiceLive } from "./auth/Layers/SessionCredentialService";
 import { ServerSecretStoreLive } from "./auth/Layers/ServerSecretStore";
+import { AuthSessionRepositoryLive } from "./persistence/Layers/AuthSessions";
 import { ServerAuthLive } from "./auth/Layers/ServerAuth";
 import { OrchestrationLayerLive } from "./orchestration/runtimeLayer";
 import {
@@ -196,7 +198,16 @@ const AuthLayerLive = ServerAuthLive.pipe(
   Layer.provide(ServerSecretStoreLive),
 );
 
-const HostedLayerLive = HostedControlPlaneLive.pipe(Layer.provideMerge(PersistenceLayerLive));
+const HostedSessionCredentialStackLive = SessionCredentialServiceLive.pipe(
+  Layer.provideMerge(AuthSessionRepositoryLive),
+  Layer.provideMerge(PersistenceLayerLive),
+  Layer.provide(ServerSecretStoreLive),
+);
+
+const HostedLayerLive = HostedControlPlaneLive.pipe(
+  Layer.provideMerge(PersistenceLayerLive),
+  Layer.provideMerge(HostedSessionCredentialStackLive),
+);
 
 const RuntimeDependenciesLive = ReactorLayerLive.pipe(
   // Core Services
@@ -250,7 +261,7 @@ export const makeCoreRoutesLayer = Layer.mergeAll(
 export const makeRoutesLayer = Layer.mergeAll(
   makeCoreRoutesLayer,
   Layer.mergeAll(...hostedRouteLayers),
-);
+).pipe(Layer.provide(browserApiCorsLayer));
 
 export const makeServerLayer = Layer.unwrap(
   Effect.gen(function* () {
@@ -306,4 +317,8 @@ export const makeServerLayer = Layer.unwrap(
 );
 
 // Important: Only `ServerConfig` should be provided by the CLI layer!!! Don't let other requirements leak into the launch layer.
-export const runServer = Layer.launch(makeServerLayer);
+export const runServer = Layer.launch(makeServerLayer) satisfies Effect.Effect<
+  never,
+  any,
+  ServerConfig
+>;

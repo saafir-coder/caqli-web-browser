@@ -67,6 +67,10 @@
     "./hosted/poolWorkspace": {
       "types": "./src/hosted/poolWorkspace.ts",
       "import": "./src/hosted/poolWorkspace.ts"
+    },
+    "./hosted/accessAllowlist": {
+      "types": "./src/hosted/accessAllowlist.ts",
+      "import": "./src/hosted/accessAllowlist.ts"
     }
   },
   "scripts": {
