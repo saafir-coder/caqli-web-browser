@@ -14,6 +14,7 @@ import { Route as SettingsRouteImport } from './routes/settings'
 import { Route as PairRouteImport } from './routes/pair'
 import { Route as OnboardingRouteImport } from './routes/onboarding'
 import { Route as ConnectProviderRouteImport } from './routes/connect-provider'
+import { Route as CodeRouteImport } from './routes/code'
 import { Route as CheckEmailRouteImport } from './routes/check-email'
 import { Route as AccessDeniedRouteImport } from './routes/access-denied'
 import { Route as ChatRouteImport } from './routes/_chat'
@@ -48,6 +49,11 @@ const OnboardingRoute = OnboardingRouteImport.update({
 const ConnectProviderRoute = ConnectProviderRouteImport.update({
   id: '/connect-provider',
   path: '/connect-provider',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const CodeRoute = CodeRouteImport.update({
+  id: '/code',
+  path: '/code',
   getParentRoute: () => rootRouteImport,
 } as any)
 const CheckEmailRoute = CheckEmailRouteImport.update({
@@ -105,6 +111,7 @@ export interface FileRoutesByFullPath {
   '/': typeof ChatIndexRoute
   '/access-denied': typeof AccessDeniedRoute
   '/check-email': typeof CheckEmailRoute
+  '/code': typeof CodeRoute
   '/connect-provider': typeof ConnectProviderRoute
   '/onboarding': typeof OnboardingRoute
   '/pair': typeof PairRoute
@@ -120,6 +127,7 @@ export interface FileRoutesByFullPath {
 export interface FileRoutesByTo {
   '/access-denied': typeof AccessDeniedRoute
   '/check-email': typeof CheckEmailRoute
+  '/code': typeof CodeRoute
   '/connect-provider': typeof ConnectProviderRoute
   '/onboarding': typeof OnboardingRoute
   '/pair': typeof PairRoute
@@ -138,6 +146,7 @@ export interface FileRoutesById {
   '/_chat': typeof ChatRouteWithChildren
   '/access-denied': typeof AccessDeniedRoute
   '/check-email': typeof CheckEmailRoute
+  '/code': typeof CodeRoute
   '/connect-provider': typeof ConnectProviderRoute
   '/onboarding': typeof OnboardingRoute
   '/pair': typeof PairRoute
@@ -157,6 +166,7 @@ export interface FileRouteTypes {
     | '/'
     | '/access-denied'
     | '/check-email'
+    | '/code'
     | '/connect-provider'
     | '/onboarding'
     | '/pair'
@@ -172,6 +182,7 @@ export interface FileRouteTypes {
   to:
     | '/access-denied'
     | '/check-email'
+    | '/code'
     | '/connect-provider'
     | '/onboarding'
     | '/pair'
@@ -189,6 +200,7 @@ export interface FileRouteTypes {
     | '/_chat'
     | '/access-denied'
     | '/check-email'
+    | '/code'
     | '/connect-provider'
     | '/onboarding'
     | '/pair'
@@ -207,6 +219,7 @@ export interface RootRouteChildren {
   ChatRoute: typeof ChatRouteWithChildren
   AccessDeniedRoute: typeof AccessDeniedRoute
   CheckEmailRoute: typeof CheckEmailRoute
+  CodeRoute: typeof CodeRoute
   ConnectProviderRoute: typeof ConnectProviderRoute
   OnboardingRoute: typeof OnboardingRoute
   PairRoute: typeof PairRoute
@@ -250,6 +263,13 @@ declare module '@tanstack/react-router' {
       path: '/connect-provider'
       fullPath: '/connect-provider'
       preLoaderRoute: typeof ConnectProviderRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/code': {
+      id: '/code'
+      path: '/code'
+      fullPath: '/code'
+      preLoaderRoute: typeof CodeRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/check-email': {
@@ -359,6 +379,7 @@ const rootRouteChildren: RootRouteChildren = {
   ChatRoute: ChatRouteWithChildren,
   AccessDeniedRoute: AccessDeniedRoute,
   CheckEmailRoute: CheckEmailRoute,
+  CodeRoute: CodeRoute,
   ConnectProviderRoute: ConnectProviderRoute,
   OnboardingRoute: OnboardingRoute,
   PairRoute: PairRoute,

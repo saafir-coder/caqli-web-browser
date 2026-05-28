@@ -45,6 +45,7 @@ import {
   updatePrimaryEnvironmentDescriptor,
 } from "../environments/primary";
 import { isHostedAuthConfigured, isHostedT3DeferredPath } from "../hosted/config";
+import { HostedAppChrome } from "../hosted/workspace/HostedAppChrome";
 import { isHostedMinimalChromePath } from "../hosted/hostedLayoutPaths";
 
 export const Route = createRootRouteWithContext<{
@@ -108,7 +109,13 @@ function RootRouteView() {
         <WebSocketConnectionSurface>
           <CommandPalette>
             <AppSidebarLayout>
-              <Outlet />
+              {isHostedAuthConfigured() ? (
+                <HostedAppChrome>
+                  <Outlet />
+                </HostedAppChrome>
+              ) : (
+                <Outlet />
+              )}
             </AppSidebarLayout>
           </CommandPalette>
         </WebSocketConnectionSurface>

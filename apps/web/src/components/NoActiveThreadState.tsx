@@ -1,12 +1,18 @@
 import { Empty, EmptyDescription, EmptyHeader, EmptyTitle } from "./ui/empty";
 import { SidebarInset, SidebarTrigger } from "./ui/sidebar";
 import { isElectron } from "../env";
+import { isHostedAuthConfigured } from "../hosted/config";
+import { HostedWorkspacePage } from "../hosted/workspace/HostedWorkspacePage";
 import { cn } from "~/lib/utils";
 import { CaqliDesktopWorkspace } from "./CaqliDesktopWorkspace";
 
 export function NoActiveThreadState() {
   if (isElectron && window.desktopBridge) {
     return <CaqliDesktopWorkspace />;
+  }
+
+  if (isHostedAuthConfigured()) {
+    return <HostedWorkspacePage />;
   }
 
   return (
