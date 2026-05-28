@@ -51,3 +51,10 @@ Docs:
 - Codex-Monitor (Tauri, feature-complete, strong reference implementation): https://github.com/Dimillian/CodexMonitor
 
 Use these as implementation references when designing protocol handling, UX flows, and operational safeguards.
+
+## Cursor Cloud specific instructions
+
+- Standard setup and quality commands are documented in `README.md`; the Cloud startup update script should only refresh dependencies with `bun install --backend=copyfile --frozen-lockfile`.
+- In Cursor Cloud, the global git config rewrites GitHub SSH remotes to authenticated HTTPS. For the full Vitest suite, run `GIT_CONFIG_GLOBAL=/dev/null bun run test -- --env-mode=loose` so Turborepo passes the isolated git config through to package tests.
+- `bun run dev` starts the browser product with Vite on `http://localhost:5733/` and the API/WebSocket server on `http://localhost:13773/`; the unauthenticated server descriptor is at `http://localhost:13773/.well-known/t3/environment`. With a fresh `T3CODE_HOME`, use the pairing URL printed by the server if the browser session is not already trusted.
+- Provider-backed turns require the Codex CLI to be installed and authenticated (`codex login` or an API-key login). Without Codex credentials, the UI can load and manage projects/threads, but Codex sessions will fail to spawn.
