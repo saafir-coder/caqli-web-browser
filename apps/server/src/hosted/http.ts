@@ -1,8 +1,13 @@
 import { DateTime, Effect, Option, Schema } from "effect";
 import { HttpRouter, HttpServerRequest, HttpServerResponse } from "effect/unstable/http";
 
+import { ServerConfig } from "../config.ts";
 import { SessionCredentialService } from "../auth/Services/SessionCredentialService.ts";
 import { HostedControlPlane, HostedControlPlaneError } from "./Services/HostedControlPlane.ts";
+import {
+  readForwardedProtoHeader,
+  resolveHostedSessionCookieSecure,
+} from "./sessionCookieSecure.ts";
 
 const MagicLinkRequestBody = Schema.Struct({
   email: Schema.String,
@@ -88,10 +93,15 @@ export const hostedAuthCallbackRouteLayer = HttpRouter.add(
     }
 
     const token = url.value.searchParams.get("token") ?? "";
+    const config = yield* ServerConfig;
     const controlPlane = yield* HostedControlPlane;
     const sessions = yield* SessionCredentialService;
     const result = yield* controlPlane.consumeMagicLink(token);
-    const secure = url.value.protocol === "https:";
+    const secure = resolveHostedSessionCookieSecure({
+      requestUrl: url.value,
+      publicOrigin: config.hosted.publicOrigin,
+      forwardedProto: readForwardedProtoHeader(request.headers),
+    });
 
     return yield* HttpServerResponse.jsonUnsafe(
       {
@@ -130,7 +140,20 @@ export const hostedDeleteSessionRouteLayer = HttpRouter.add(
   "/api/hosted/session",
   Effect.gen(function* () {
     const request = yield* HttpServerRequest.HttpServerRequest;
+    const config = yield* ServerConfig;
     const sessions = yield* SessionCredentialService;
+    const requestUrl = Option.match(HttpServerRequest.toURL(request), {
+      onNone: () => {
+        const origin = config.hosted.publicOrigin?.trim();
+        return origin ? new URL(origin) : new URL("http://127.0.0.1");
+      },
+      onSome: (url) => url,
+    });
+    const secure = resolveHostedSessionCookieSecure({
+      requestUrl,
+      publicOrigin: config.hosted.publicOrigin,
+      forwardedProto: readForwardedProtoHeader(request.headers),
+    });
     const token = request.cookies[sessions.cookieName];
     if (token?.trim()) {
       const verified = yield* sessions.verify(token).pipe(Effect.option);
@@ -144,6 +167,7 @@ export const hostedDeleteSessionRouteLayer = HttpRouter.add(
         httpOnly: true,
         path: "/",
         sameSite: "lax",
+        secure,
       }),
     );
   }),
