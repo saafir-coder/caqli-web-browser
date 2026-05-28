@@ -1,4 +1,5 @@
-import { Outlet, createFileRoute, redirect } from "@tanstack/react-router";
+import { createFileRoute, Outlet, redirect } from "@tanstack/react-router";
+import type { Session } from "@supabase/supabase-js";
 import { useEffect } from "react";
 
 import { useCommandPaletteStore } from "../commandPaletteStore";
@@ -14,6 +15,9 @@ import { useThreadSelectionStore } from "../threadSelectionStore";
 import { resolveSidebarNewThreadEnvMode } from "~/components/Sidebar.logic";
 import { useSettings } from "~/hooks/useSettings";
 import { useServerKeybindings } from "~/rpc/serverState";
+import { getSupabaseBrowserClient } from "../hosted/supabaseClient";
+import { isHostedAuthConfigured } from "../hosted/config";
+import { readHostedProfileComplete } from "../hosted/onboardingStorage";
 
 function ChatRouteGlobalShortcuts() {
   const clearSelection = useThreadSelectionStore((state) => state.clearSelection);
@@ -109,7 +113,23 @@ function ChatRouteLayout() {
 export const Route = createFileRoute("/_chat")({
   beforeLoad: async ({ context }) => {
     if (context.authGateState.status !== "authenticated") {
-      throw redirect({ to: "/pair", replace: true });
+      throw redirect({
+        to: isHostedAuthConfigured() ? "/welcome" : "/pair",
+        replace: true,
+      });
+    }
+
+    if (isHostedAuthConfigured()) {
+      let session: Session | null = null;
+      try {
+        const supabase = getSupabaseBrowserClient();
+        session = (await supabase.auth.getSession()).data.session ?? null;
+      } catch {
+        session = null;
+      }
+      if (session && !readHostedProfileComplete()) {
+        throw redirect({ to: "/onboarding", replace: true });
+      }
     }
   },
   component: ChatRouteLayout,

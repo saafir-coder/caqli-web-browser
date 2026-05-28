@@ -44,14 +44,17 @@ import {
   resolveInitialServerAuthGateState,
   updatePrimaryEnvironmentDescriptor,
 } from "../environments/primary";
+import { isHostedAuthConfigured, isPublicHostedAuthPath } from "../hosted/config";
+import { isHostedMinimalChromePath } from "../hosted/hostedLayoutPaths";
 
 export const Route = createRootRouteWithContext<{
   queryClient: QueryClient;
 }>()({
-  beforeLoad: async () => {
+  beforeLoad: async ({ location }) => {
+    const publicHostedEntry = isHostedAuthConfigured() && isPublicHostedAuthPath(location.pathname);
     const [, authGateState] = await Promise.all([
-      ensurePrimaryEnvironmentReady(),
-      resolveInitialServerAuthGateState(),
+      publicHostedEntry ? Promise.resolve() : ensurePrimaryEnvironmentReady(),
+      resolveInitialServerAuthGateState({ publicHostedEntry }),
     ]);
     return {
       authGateState,
@@ -77,7 +80,7 @@ function RootRouteView() {
     };
   }, [pathname]);
 
-  if (pathname === "/pair") {
+  if (isHostedMinimalChromePath(pathname)) {
     return <Outlet />;
   }
 

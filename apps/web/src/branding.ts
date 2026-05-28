@@ -1,5 +1,7 @@
 import type { DesktopAppBranding } from "@t3tools/contracts";
 
+import { isElectron } from "./env";
+
 function readInjectedDesktopAppBranding(): DesktopAppBranding | null {
   if (typeof window === "undefined") {
     return null;
@@ -10,7 +12,8 @@ function readInjectedDesktopAppBranding(): DesktopAppBranding | null {
 
 const injectedDesktopAppBranding = readInjectedDesktopAppBranding();
 
-export const APP_BASE_NAME = injectedDesktopAppBranding?.baseName ?? "Caqli Desktop";
+export const APP_BASE_NAME =
+  injectedDesktopAppBranding?.baseName ?? (isElectron ? "Caqli Desktop" : "Caqli");
 export const APP_STAGE_LABEL =
   injectedDesktopAppBranding?.stageLabel ?? (import.meta.env.DEV ? "Dev" : "Alpha");
 export const APP_DISPLAY_NAME =
