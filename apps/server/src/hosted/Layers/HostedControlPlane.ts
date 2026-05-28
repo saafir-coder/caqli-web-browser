@@ -1,5 +1,6 @@
 import { DateTime, Duration, Effect, Layer } from "effect";
 import * as SqlClient from "effect/unstable/sql/SqlClient";
+import { SqlError } from "effect/unstable/sql/SqlError";
 import { createHash, randomBytes } from "node:crypto";
 
 import { ServerConfig } from "../../config.ts";
@@ -9,7 +10,10 @@ import {
   normalizeHostedEmail,
   type HostedAccessMode,
 } from "../accessAllowlist.ts";
-import { resolveMagicLinkAllowedOrigins, validateMagicLinkRedirectTo } from "../magicLinkRedirect.ts";
+import {
+  resolveMagicLinkAllowedOrigins,
+  validateMagicLinkRedirectTo,
+} from "../magicLinkRedirect.ts";
 import { provisionWorkspacePath } from "../poolWorkspace.ts";
 import {
   HostedControlPlane,
@@ -61,6 +65,29 @@ function appendTokenToRedirect(redirectTo: string, token: string): string {
   const url = new URL(redirectTo);
   url.searchParams.set("token", token);
   return url.toString();
+}
+
+function isSqlUniqueConstraintError(error: SqlError): boolean {
+  if (error.reason._tag === "ConstraintError") {
+    return true;
+  }
+  const cause = error.reason.cause;
+  if (cause && typeof cause === "object" && "code" in cause) {
+    const code = (cause as { code: unknown }).code;
+    if (code === "23505") {
+      return true;
+    }
+    if (typeof code === "string" && code.startsWith("SQLITE_CONSTRAINT")) {
+      return true;
+    }
+  }
+  if (cause && typeof cause === "object" && "message" in cause) {
+    const message = (cause as { message: unknown }).message;
+    if (typeof message === "string" && message.toUpperCase().includes("UNIQUE")) {
+      return true;
+    }
+  }
+  return false;
 }
 
 export const makeHostedControlPlane = Effect.gen(function* () {
@@ -133,24 +160,23 @@ export const makeHostedControlPlane = Effect.gen(function* () {
   const upsertUserByEmail = (email: string) =>
     Effect.gen(function* () {
       const normalized = normalizeHostedEmail(email);
-      const existing = yield* sql<HostedUserRow>`
-        SELECT id, email, created_at
-        FROM hosted_users
-        WHERE email = ${normalized}
-        LIMIT 1
-      `.pipe(Effect.map((rows) => rows[0]));
-
-      if (existing) {
-        return toUser(existing);
-      }
-
       const id = crypto.randomUUID();
       const createdAt = DateTime.formatIso(yield* DateTime.now);
-      yield* sql`
+      const inserted = yield* sql<HostedUserRow>`
         INSERT INTO hosted_users (id, email, created_at)
         VALUES (${id}, ${normalized}, ${createdAt})
-      `;
-      return { id, email: normalized, createdAt } satisfies HostedUser;
+        ON CONFLICT (email) DO UPDATE SET email = EXCLUDED.email
+        RETURNING id, email, created_at
+      `.pipe(Effect.map((rows) => rows[0]));
+
+      if (!inserted) {
+        return yield* new HostedControlPlaneError({
+          message: "Failed to persist hosted user.",
+          status: 500,
+        });
+      }
+
+      return toUser(inserted);
     }).pipe(
       Effect.mapError(
         (cause) =>
@@ -388,33 +414,38 @@ export const makeHostedControlPlane = Effect.gen(function* () {
         createdAt,
       } satisfies HostedProject;
 
+      const recoverProjectFromUniqueConflict = sql<HostedProjectRow>`
+        SELECT id, user_id, name, workspace_path, created_at
+        FROM hosted_projects
+        WHERE workspace_path = ${workspacePath}
+           OR (user_id = ${userId} AND name = ${trimmed})
+        LIMIT 1
+      `.pipe(
+        Effect.flatMap((rows) => {
+          const row = rows[0];
+          if (!row) {
+            return Effect.fail(
+              new HostedControlPlaneError({
+                message: "Could not create hosted project.",
+                status: 500,
+              }),
+            );
+          }
+          return Effect.succeed(toProject(row));
+        }),
+      );
+
       const inserted = yield* sql`
         INSERT INTO hosted_projects (id, user_id, name, workspace_path, created_at)
         VALUES (${projectId}, ${userId}, ${trimmed}, ${workspacePath}, ${createdAt})
       `.pipe(
         Effect.as(optimistic),
-        Effect.catch(() =>
-          sql<HostedProjectRow>`
-            SELECT id, user_id, name, workspace_path, created_at
-            FROM hosted_projects
-            WHERE workspace_path = ${workspacePath}
-               OR (user_id = ${userId} AND name = ${trimmed})
-            LIMIT 1
-          `.pipe(
-            Effect.flatMap((rows) => {
-              const row = rows[0];
-              if (!row) {
-                return Effect.fail(
-                  new HostedControlPlaneError({
-                    message: "Could not create hosted project.",
-                    status: 500,
-                  }),
-                );
-              }
-              return Effect.succeed(toProject(row));
-            }),
-          ),
-        ),
+        Effect.catchTag("SqlError", (sqlError) => {
+          if (!isSqlUniqueConstraintError(sqlError)) {
+            return Effect.fail(sqlError);
+          }
+          return recoverProjectFromUniqueConflict;
+        }),
       );
 
       return inserted;

@@ -4,7 +4,7 @@ import {
   isHostedControlPlaneConfigured,
   isSupabaseHostedAuthConfigured,
 } from "./config";
-import { getHostedSession } from "./hostedClient";
+import { getHostedSession, signOutHostedSession } from "./hostedClient";
 import { readHostedCodexConnected } from "./hostedCodexConnection";
 import { readHostedProfileComplete } from "./onboardingStorage";
 import { getSupabaseBrowserClient } from "./supabaseClient";
@@ -129,6 +129,8 @@ export async function resolveHostedChatRedirect(): Promise<HostedRouteRedirect |
   if (denied) {
     if (signedIn.kind === "supabase") {
       await signedIn.supabase.auth.signOut();
+    } else if (signedIn.kind === "control-plane") {
+      await signOutHostedSession();
     }
     return denied;
   }

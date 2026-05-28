@@ -44,6 +44,25 @@ describe("hostedAppGate", () => {
     });
   });
 
+  it("resolveHostedChatRedirect signs out control-plane session when access denied", async () => {
+    vi.spyOn(hostedClient, "getHostedSession").mockResolvedValue({
+      authenticated: true,
+      user: { id: "u1", email: "denied@b.com", createdAt: "2026-01-01T00:00:00.000Z" },
+    });
+    vi.spyOn(checkHostedAccess, "assertSessionMayEnterApp").mockResolvedValue({
+      ok: false,
+      userMessage: "Not on the list",
+    });
+    const signOut = vi.spyOn(hostedClient, "signOutHostedSession").mockResolvedValue();
+
+    await expect(resolveHostedChatRedirect()).resolves.toEqual({
+      to: "/access-denied",
+      search: { message: "Not on the list" },
+      replace: true,
+    });
+    expect(signOut).toHaveBeenCalledOnce();
+  });
+
   it("resolveHostedChatRedirect requires connect-provider when codex not connected", async () => {
     vi.spyOn(hostedClient, "getHostedSession").mockResolvedValue({
       authenticated: true,

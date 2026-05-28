@@ -125,6 +125,30 @@ export const hostedSessionRouteLayer = HttpRouter.add(
   }).pipe(Effect.catchTag("HostedControlPlaneError", respondToHostedError)),
 );
 
+export const hostedDeleteSessionRouteLayer = HttpRouter.add(
+  "DELETE",
+  "/api/hosted/session",
+  Effect.gen(function* () {
+    const request = yield* HttpServerRequest.HttpServerRequest;
+    const sessions = yield* SessionCredentialService;
+    const token = request.cookies[sessions.cookieName];
+    if (token?.trim()) {
+      const verified = yield* sessions.verify(token).pipe(Effect.option);
+      if (verified._tag === "Some") {
+        yield* sessions.revoke(verified.value.sessionId).pipe(Effect.ignore);
+      }
+    }
+    return yield* HttpServerResponse.jsonUnsafe({ ok: true }, { status: 200 }).pipe(
+      HttpServerResponse.setCookie(sessions.cookieName, "", {
+        expires: new Date(0),
+        httpOnly: true,
+        path: "/",
+        sameSite: "lax",
+      }),
+    );
+  }),
+);
+
 const requireHostedUser = Effect.gen(function* () {
   const request = yield* HttpServerRequest.HttpServerRequest;
   const sessions = yield* SessionCredentialService;
@@ -179,6 +203,7 @@ export const hostedRouteLayers = [
   hostedMagicLinkRouteLayer,
   hostedAuthCallbackRouteLayer,
   hostedSessionRouteLayer,
+  hostedDeleteSessionRouteLayer,
   hostedProjectsRouteLayer,
   hostedCreateProjectRouteLayer,
 ] as const;

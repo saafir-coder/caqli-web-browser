@@ -49,6 +49,11 @@ export async function getHostedSession(): Promise<HostedSessionResponse> {
   return readJson(response);
 }
 
+/** Revokes the hosted control-plane session cookie (best-effort). */
+export async function signOutHostedSession(): Promise<void> {
+  await hostedFetch("/api/hosted/session", { method: "DELETE" }).catch(() => undefined);
+}
+
 export async function getHostedSignedInEmail(): Promise<string | undefined> {
   const session = await getHostedSession();
   return session.authenticated ? session.user?.email : undefined;
