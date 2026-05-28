@@ -40,7 +40,7 @@ function DiffPanelSheet(props: {
     >
       <SheetPopup
         side={useBottomSheet ? "bottom" : "right"}
-        showCloseButton={useBottomSheet}
+        showCloseButton={false}
         keepMounted
         backdropClassName={useBottomSheet ? "z-[100]" : undefined}
         viewportClassName={useBottomSheet ? "z-[100] pt-4" : undefined}

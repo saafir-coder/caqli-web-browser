@@ -15,11 +15,18 @@ describe("diffRouteController", () => {
     });
     expect(buildDiffSearchClosed({ diff: true, diffTurnId: "turn-1", keep: "yes" })).toEqual({
       keep: "yes",
+      diff: undefined,
+      diffTurnId: undefined,
+      diffFilePath: undefined,
     });
   });
 
   it("toggles diff search params", () => {
-    expect(buildDiffSearchToggled({ diff: true }, true)).toEqual({});
+    expect(buildDiffSearchToggled({ diff: true }, true)).toEqual({
+      diff: undefined,
+      diffTurnId: undefined,
+      diffFilePath: undefined,
+    });
     expect(buildDiffSearchToggled({}, false)).toEqual({ diff: true });
   });
 });

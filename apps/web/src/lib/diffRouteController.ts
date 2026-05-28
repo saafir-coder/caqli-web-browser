@@ -39,7 +39,8 @@ export function buildDiffSearchOpen(
 
 export function buildDiffSearchClosed(previous: Record<string, unknown>): Record<string, unknown> {
   const rest = stripDiffSearchParams(previous);
-  return { ...rest };
+  // Explicit undefined clears params retained by retainSearchParams(["diff"]).
+  return { ...rest, diff: undefined, diffTurnId: undefined, diffFilePath: undefined };
 }
 
 export function buildDiffSearchToggled(

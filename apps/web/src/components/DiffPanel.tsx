@@ -9,6 +9,7 @@ import {
   Columns2Icon,
   Rows3Icon,
   TextWrapIcon,
+  XIcon,
 } from "lucide-react";
 import {
   type WheelEvent as ReactWheelEvent,
@@ -38,6 +39,8 @@ import { DraftId } from "../composerDraftStore";
 import { useSettings } from "../hooks/useSettings";
 import { formatShortTimestamp } from "../timestampFormat";
 import { DiffPanelLoadingState, DiffPanelShell, type DiffPanelMode } from "./DiffPanelShell";
+import { Button } from "./ui/button";
+import { SheetClose } from "./ui/sheet";
 import { ToggleGroup, Toggle } from "./ui/toggle-group";
 
 type DiffRenderMode = "stacked" | "split";
@@ -523,7 +526,7 @@ export default function DiffPanel({ mode = "inline" }: DiffPanelProps) {
           ))}
         </div>
       </div>
-      <div className="flex shrink-0 items-center gap-1 [-webkit-app-region:no-drag]">
+      <div className="relative z-10 flex shrink-0 items-center gap-1 [-webkit-app-region:no-drag] [&_[data-slot=toggle]]:pointer-coarse:after:!size-7 [&_[data-slot=toggle]]:pointer-coarse:after:!min-h-0 [&_[data-slot=toggle]]:pointer-coarse:after:!min-w-0">
         <ToggleGroup
           className="shrink-0"
           variant="outline"
@@ -555,6 +558,21 @@ export default function DiffPanel({ mode = "inline" }: DiffPanelProps) {
         >
           <TextWrapIcon className="size-3" />
         </Toggle>
+        {mode === "sheet" ? (
+          <SheetClose
+            render={
+              <Button
+                type="button"
+                variant="outline"
+                size="xs"
+                className="relative z-20 size-7 min-w-7 shrink-0 px-0 pointer-coarse:after:!size-7 pointer-coarse:after:!min-h-0 pointer-coarse:after:!min-w-0"
+                aria-label="Close diff panel"
+              />
+            }
+          >
+            <XIcon className="size-3.5" />
+          </SheetClose>
+        ) : null}
       </div>
     </>
   );
