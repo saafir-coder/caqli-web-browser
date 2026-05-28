@@ -259,35 +259,7 @@ export const makeHostedControlPlane = Effect.gen(function* () {
 
       const tokenHash = hashMagicLinkToken(magicLinkSecret, trimmed);
       const nowIso = DateTime.formatIso(yield* DateTime.now);
-      const consumed = yield* sql<{ readonly email: string }>`
-        UPDATE hosted_magic_link_tokens
-        SET consumed_at = ${nowIso}
-        WHERE token_hash = ${tokenHash}
-          AND consumed_at IS NULL
-          AND expires_at > ${nowIso}
-        RETURNING email
-      `.pipe(Effect.map((rows) => rows[0]));
-
-      if (consumed) {
-        const user = yield* upsertUserByEmail(consumed.email);
-        const issued = yield* sessions.issue({
-          subject: user.id,
-          method: "browser-session-cookie",
-          role: "owner",
-          client: {
-            deviceType: "unknown",
-            label: user.email,
-          },
-        });
-
-        return {
-          user,
-          sessionToken: issued.token,
-          expiresAt: issued.expiresAt,
-        };
-      }
-
-      const row = yield* sql<{
+      const pending = yield* sql<{
         readonly email: string;
         readonly expires_at: string;
         readonly consumed_at: string | null;
@@ -298,22 +270,69 @@ export const makeHostedControlPlane = Effect.gen(function* () {
         LIMIT 1
       `.pipe(Effect.map((rows) => rows[0]));
 
-      if (!row) {
+      if (!pending) {
         return yield* new HostedControlPlaneError({
           message: "Invalid or expired magic link.",
           status: 401,
         });
       }
-      if (row.consumed_at) {
+      if (pending.consumed_at) {
         return yield* new HostedControlPlaneError({
           message: "Magic link was already used.",
           status: 401,
         });
       }
-      return yield* new HostedControlPlaneError({
-        message: "Magic link expired. Request a new one.",
-        status: 401,
+      if (pending.expires_at <= nowIso) {
+        return yield* new HostedControlPlaneError({
+          message: "Magic link expired. Request a new one.",
+          status: 401,
+        });
+      }
+
+      const decision = decideHostedAccess(pending.email, allowlist, accessMode);
+      if (!decision.allowed) {
+        return yield* new HostedControlPlaneError({
+          message:
+            decision.reason === "not_on_allowlist"
+              ? "This email is not on the dogfood access list."
+              : "Invite-only access during dogfood.",
+          status: 403,
+          ...(decision.reason ? { code: decision.reason } : {}),
+        });
+      }
+
+      const consumed = yield* sql<{ readonly email: string }>`
+        UPDATE hosted_magic_link_tokens
+        SET consumed_at = ${nowIso}
+        WHERE token_hash = ${tokenHash}
+          AND consumed_at IS NULL
+          AND expires_at > ${nowIso}
+        RETURNING email
+      `.pipe(Effect.map((rows) => rows[0]));
+
+      if (!consumed) {
+        return yield* new HostedControlPlaneError({
+          message: "Magic link was already used.",
+          status: 401,
+        });
+      }
+
+      const user = yield* upsertUserByEmail(consumed.email);
+      const issued = yield* sessions.issue({
+        subject: user.id,
+        method: "browser-session-cookie",
+        role: "owner",
+        client: {
+          deviceType: "unknown",
+          label: user.email,
+        },
       });
+
+      return {
+        user,
+        sessionToken: issued.token,
+        expiresAt: issued.expiresAt,
+      };
     }).pipe(
       Effect.mapError((error) =>
         error instanceof HostedControlPlaneError

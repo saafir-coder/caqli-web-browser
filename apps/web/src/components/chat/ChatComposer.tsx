@@ -1773,9 +1773,7 @@ export const ChatComposer = memo(
             <div
               className={cn(
                 "relative",
-                hostedStitch
-                  ? "px-2.5 pb-1.5 sm:px-3"
-                  : "px-3 pb-2 sm:px-4",
+                hostedStitch ? "px-2.5 pb-1.5 sm:px-3" : "px-3 pb-2 sm:px-4",
                 hostedStitch
                   ? hasComposerHeader
                     ? "pt-2 sm:pt-2.5"
@@ -1873,7 +1871,7 @@ export const ChatComposer = memo(
 
               <ComposerPromptEditor
                 ref={composerEditorRef}
-                className={hostedStitch ? "min-h-14 leading-snug" : undefined}
+                {...(hostedStitch ? { className: "min-h-14 leading-snug" } : {})}
                 value={
                   isComposerApprovalState
                     ? ""
@@ -1929,9 +1927,7 @@ export const ChatComposer = memo(
                 data-chat-composer-footer-compact={isComposerFooterCompact ? "true" : "false"}
                 className={cn(
                   "flex min-w-0 flex-nowrap items-center justify-between gap-2 overflow-visible",
-                  hostedStitch
-                    ? "px-2 pb-2 sm:px-2.5 sm:pb-2.5"
-                    : "px-2.5 pb-2.5 sm:px-3 sm:pb-3",
+                  hostedStitch ? "px-2 pb-2 sm:px-2.5 sm:pb-2.5" : "px-2.5 pb-2.5 sm:px-3 sm:pb-3",
                   isComposerFooterCompact ? "gap-1.5" : "gap-2 sm:gap-0",
                 )}
               >

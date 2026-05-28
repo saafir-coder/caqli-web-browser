@@ -42,8 +42,9 @@ function DiffPanelSheet(props: {
         side={useBottomSheet ? "bottom" : "right"}
         showCloseButton={false}
         keepMounted
-        backdropClassName={useBottomSheet ? "z-[100]" : undefined}
-        viewportClassName={useBottomSheet ? "z-[100] pt-4" : undefined}
+        {...(useBottomSheet
+          ? { backdropClassName: "z-[100]", viewportClassName: "z-[100] pt-4" }
+          : {})}
         className={
           useBottomSheet
             ? "h-[min(88dvh,calc(100dvh-3.5rem-env(safe-area-inset-bottom)))] max-h-none w-full max-w-none rounded-t-2xl border-x-0 border-b-0 p-0"

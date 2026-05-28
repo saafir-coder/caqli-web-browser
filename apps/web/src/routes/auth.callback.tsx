@@ -30,12 +30,7 @@ function AuthCallbackPage() {
             setMessage("Missing sign-in token. Request a new link from the welcome page.");
             return;
           }
-          const result = await completeHostedMagicLinkCallback(token);
-          const access = await assertSessionMayEnterApp(result.user.email);
-          if (!access.ok) {
-            setMessage(access.userMessage);
-            return;
-          }
+          await completeHostedMagicLinkCallback(token);
           void navigate(await resolveHostedPostAuthRedirect());
           return;
         }
