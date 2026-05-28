@@ -444,6 +444,9 @@ export interface ChatComposerProps {
   scheduleComposerFocus: () => void;
   setThreadError: (threadId: ThreadId | null, error: string | null) => void;
   onExpandImage: (preview: ExpandedImagePreview) => void;
+
+  /** Stitch mobile workspace — “Message Caqli” placeholder */
+  hostedStitch?: boolean;
 }
 
 // --------------------------------------------------------------------------
@@ -514,6 +517,7 @@ export const ChatComposer = memo(
       scheduleComposerFocus,
       setThreadError,
       onExpandImage,
+      hostedStitch = false,
     } = props;
 
     // ------------------------------------------------------------------
@@ -1722,7 +1726,8 @@ export const ChatComposer = memo(
       >
         <div
           className={cn(
-            "group rounded-[22px] p-px transition-colors duration-200",
+            "group p-px transition-colors duration-200",
+            hostedStitch ? "rounded-[20px]" : "rounded-[22px]",
             composerProviderState.composerFrameClassName,
           )}
           onDragEnter={onComposerDragEnter}
@@ -1732,7 +1737,8 @@ export const ChatComposer = memo(
         >
           <div
             className={cn(
-              "rounded-[20px] border bg-card transition-colors duration-200 has-focus-visible:border-ring/45",
+              "border bg-card transition-colors duration-200 has-focus-visible:border-ring/45",
+              hostedStitch ? "rounded-[19px]" : "rounded-[20px]",
               isDragOverComposer ? "border-primary/70 bg-accent/30" : "border-border",
               composerProviderState.composerSurfaceClassName,
             )}
@@ -1766,8 +1772,17 @@ export const ChatComposer = memo(
 
             <div
               className={cn(
-                "relative px-3 pb-2 sm:px-4",
-                hasComposerHeader ? "pt-2.5 sm:pt-3" : "pt-3.5 sm:pt-4",
+                "relative",
+                hostedStitch
+                  ? "px-2.5 pb-1.5 sm:px-3"
+                  : "px-3 pb-2 sm:px-4",
+                hostedStitch
+                  ? hasComposerHeader
+                    ? "pt-2 sm:pt-2.5"
+                    : "pt-2.5 sm:pt-3"
+                  : hasComposerHeader
+                    ? "pt-2.5 sm:pt-3"
+                    : "pt-3.5 sm:pt-4",
               )}
             >
               {composerMenuOpen && !isComposerApprovalState && (
@@ -1858,6 +1873,7 @@ export const ChatComposer = memo(
 
               <ComposerPromptEditor
                 ref={composerEditorRef}
+                className={hostedStitch ? "min-h-14 leading-snug" : undefined}
                 value={
                   isComposerApprovalState
                     ? ""
@@ -1883,9 +1899,11 @@ export const ChatComposer = memo(
                       ? "Type your own answer, or leave this blank to use the selected option"
                       : showPlanFollowUpPrompt && activeProposedPlan
                         ? "Add feedback to refine the plan, or leave this blank to implement it"
-                        : phase === "disconnected"
-                          ? "Ask for follow-up changes or attach images"
-                          : "Ask anything, @tag files/folders, or use / to show available commands"
+                        : hostedStitch
+                          ? "Message Caqli"
+                          : phase === "disconnected"
+                            ? "Ask for follow-up changes or attach images"
+                            : "Ask anything, @tag files/folders, or use / to show available commands"
                 }
                 disabled={isConnecting || isComposerApprovalState}
               />
@@ -1893,7 +1911,12 @@ export const ChatComposer = memo(
 
             {/* Bottom toolbar */}
             {activePendingApproval ? (
-              <div className="flex items-center justify-end gap-2 px-2.5 pb-2.5 sm:px-3 sm:pb-3">
+              <div
+                className={cn(
+                  "flex items-center justify-end gap-2",
+                  hostedStitch ? "px-2 pb-2 sm:px-2.5 sm:pb-2.5" : "px-2.5 pb-2.5 sm:px-3 sm:pb-3",
+                )}
+              >
                 <ComposerPendingApprovalActions
                   requestId={activePendingApproval.requestId}
                   isResponding={respondingRequestIds.includes(activePendingApproval.requestId)}
@@ -1905,7 +1928,10 @@ export const ChatComposer = memo(
                 data-chat-composer-footer="true"
                 data-chat-composer-footer-compact={isComposerFooterCompact ? "true" : "false"}
                 className={cn(
-                  "flex min-w-0 flex-nowrap items-center justify-between gap-2 overflow-visible px-2.5 pb-2.5 sm:px-3 sm:pb-3",
+                  "flex min-w-0 flex-nowrap items-center justify-between gap-2 overflow-visible",
+                  hostedStitch
+                    ? "px-2 pb-2 sm:px-2.5 sm:pb-2.5"
+                    : "px-2.5 pb-2.5 sm:px-3 sm:pb-3",
                   isComposerFooterCompact ? "gap-1.5" : "gap-2 sm:gap-0",
                 )}
               >

@@ -32,8 +32,12 @@ async function readJson<T>(response: Response): Promise<T> {
   return (await response.json()) as T;
 }
 
-async function hostedFetch(path: string, init?: RequestInit): Promise<Response> {
-  return fetch(resolvePrimaryEnvironmentHttpUrl(path), {
+async function hostedFetch(
+  path: string,
+  init?: RequestInit,
+  searchParams?: Record<string, string>,
+): Promise<Response> {
+  return fetch(resolvePrimaryEnvironmentHttpUrl(path, searchParams), {
     credentials: "include",
     ...init,
   });
@@ -81,9 +85,7 @@ export async function completeHostedMagicLinkCallback(token: string): Promise<{
   user: HostedApiUser;
   expiresAt: string;
 }> {
-  const response = await hostedFetch(
-    `/api/hosted/auth/callback?token=${encodeURIComponent(token)}`,
-  );
+  const response = await hostedFetch("/api/hosted/auth/callback", undefined, { token });
   return readJson(response);
 }
 

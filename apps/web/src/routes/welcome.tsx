@@ -9,6 +9,10 @@ import {
 } from "../hosted/config";
 import { requestHostedMagicLink } from "../hosted/hostedClient";
 import { resolveHostedWelcomeRedirect } from "../hosted/hostedAppGate";
+import {
+  HOSTED_DEV_MAGIC_LINK_KEY,
+  HOSTED_PENDING_EMAIL_KEY,
+} from "../hosted/onboardingUi";
 import { getSupabaseBrowserClient } from "../hosted/supabaseClient";
 
 export const Route = createFileRoute("/welcome")({
@@ -45,11 +49,25 @@ function WelcomePage() {
       const redirectTo = `${window.location.origin}/auth/callback`;
       if (isHostedControlPlaneConfigured()) {
         const result = await requestHostedMagicLink({ email: trimmed, redirectTo });
-        if (import.meta.env.DEV && result.devMagicLink) {
-          console.info("[hosted auth] dev magic link:", result.devMagicLink);
+        try {
+          sessionStorage.setItem(HOSTED_PENDING_EMAIL_KEY, trimmed);
+          if (import.meta.env.DEV && result.devMagicLink) {
+            sessionStorage.setItem(HOSTED_DEV_MAGIC_LINK_KEY, result.devMagicLink);
+            console.info("[hosted auth] dev magic link:", result.devMagicLink);
+          } else {
+            sessionStorage.removeItem(HOSTED_DEV_MAGIC_LINK_KEY);
+          }
+        } catch {
+          // sessionStorage unavailable — dev link still logged server-side
         }
         void navigate({ to: "/check-email", replace: false });
         return;
+      }
+      try {
+        sessionStorage.setItem(HOSTED_PENDING_EMAIL_KEY, trimmed);
+        sessionStorage.removeItem(HOSTED_DEV_MAGIC_LINK_KEY);
+      } catch {
+        // ignore
       }
       if (!isSupabaseHostedAuthConfigured()) {
         setError("Hosted sign-in is not configured.");

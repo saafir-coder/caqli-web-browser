@@ -136,6 +136,7 @@ import { PullRequestThreadDialog } from "./PullRequestThreadDialog";
 import { MessagesTimeline } from "./chat/MessagesTimeline";
 import { ChatHeader } from "./chat/ChatHeader";
 import { type ExpandedImagePreview } from "./chat/ExpandedImagePreview";
+import { isHostedAuthConfigured } from "../hosted/config";
 import { NoActiveThreadState } from "./NoActiveThreadState";
 import { resolveEffectiveEnvMode, resolveEnvironmentOptionLabel } from "./BranchToolbar.logic";
 import { ProviderStatusBanner } from "./chat/ProviderStatusBanner";
@@ -3181,6 +3182,8 @@ export default function ChatView(props: ChatViewProps) {
     return <NoActiveThreadState />;
   }
 
+  const hostedStitchChrome = isHostedAuthConfigured() && !isElectron;
+
   return (
     <div className="flex min-h-0 min-w-0 flex-1 flex-col overflow-x-hidden bg-background">
       {/* Top bar */}
@@ -3279,7 +3282,14 @@ export default function ChatView(props: ChatViewProps) {
           </div>
 
           {/* Input bar */}
-          <div className={cn("px-3 pt-1.5 sm:px-5 sm:pt-2", isGitRepo ? "pb-1" : "pb-3 sm:pb-4")}>
+          <div
+            className={cn(
+              hostedStitchChrome
+                ? "px-3 pt-1 pb-2 sm:px-5 sm:pt-1.5 sm:pb-3"
+                : "px-3 pt-1.5 sm:px-5 sm:pt-2",
+              isGitRepo ? "pb-1" : hostedStitchChrome ? "" : "pb-3 sm:pb-4",
+            )}
+          >
             <ChatComposer
               ref={composerRef}
               composerDraftTarget={composerDraftTarget}
@@ -3345,6 +3355,7 @@ export default function ChatView(props: ChatViewProps) {
               scheduleComposerFocus={scheduleComposerFocus}
               setThreadError={setThreadError}
               onExpandImage={onExpandTimelineImage}
+              hostedStitch={hostedStitchChrome}
             />
           </div>
 

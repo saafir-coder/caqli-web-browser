@@ -4,20 +4,33 @@ function isSupabaseHostedConfigured(): boolean {
   return url.length > 0 && key.length > 0;
 }
 
-function isHostedApiBaseConfigured(): boolean {
-  const apiUrl = import.meta.env.VITE_API_URL?.trim() ?? "";
-  const httpUrl = import.meta.env.VITE_HTTP_URL?.trim() ?? "";
-  return apiUrl.length > 0 || httpUrl.length > 0;
+function isHostedApiUrlConfigured(): boolean {
+  return (import.meta.env.VITE_API_URL?.trim() ?? "").length > 0;
 }
 
 /**
  * VPS control plane auth (magic link via apps/server). Preferred over Supabase.
+ *
+ * `VITE_HTTP_URL` is also set by the default dev runner for the primary T3 server
+ * (pairing + WebSocket). Do not treat that alone as hosted control plane — require an
+ * explicit opt-in via `VITE_API_URL` or `VITE_HOSTED_ACCESS_MODE`.
  */
 export function isHostedControlPlaneConfigured(): boolean {
   if (isSupabaseHostedConfigured()) {
     return false;
   }
-  return isHostedApiBaseConfigured();
+  if (isHostedApiUrlConfigured()) {
+    return true;
+  }
+  if (!isHostedAccessModeConfigured()) {
+    return false;
+  }
+  return (import.meta.env.VITE_HTTP_URL?.trim() ?? "").length > 0;
+}
+
+function isHostedAccessModeConfigured(): boolean {
+  const mode = import.meta.env.VITE_HOSTED_ACCESS_MODE?.trim().toLowerCase() ?? "";
+  return mode === "open" || mode === "invite" || mode === "closed";
 }
 
 /**
@@ -25,7 +38,11 @@ export function isHostedControlPlaneConfigured(): boolean {
  * the default T3 pairing + server session flow unchanged.
  */
 export function isHostedAuthConfigured(): boolean {
-  return isHostedControlPlaneConfigured() || isSupabaseHostedConfigured();
+  return (
+    isHostedAccessModeConfigured() ||
+    isHostedControlPlaneConfigured() ||
+    isSupabaseHostedConfigured()
+  );
 }
 
 export function isSupabaseHostedAuthConfigured(): boolean {
