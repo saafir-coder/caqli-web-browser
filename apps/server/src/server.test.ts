@@ -47,9 +47,9 @@ import { RpcClient, RpcSerialization } from "effect/unstable/rpc";
 import * as Socket from "effect/unstable/socket/Socket";
 import { vi } from "vitest";
 
-import type { ServerConfigShape } from "./config.ts";
+import { resolveHostedControlPlaneConfig, type ServerConfigShape } from "./config.ts";
 import { deriveServerPaths, ServerConfig } from "./config.ts";
-import { makeRoutesLayer } from "./server.ts";
+import { makeCoreRoutesLayer, makeRoutesLayer } from "./server.ts";
 import { resolveAttachmentRelativePath } from "./attachmentPaths.ts";
 import {
   CheckpointDiffQuery,
@@ -340,6 +340,13 @@ const buildAppUnderTest = (options?: {
       desktopBootstrapToken: defaultDesktopBootstrapToken,
       autoBootstrapProjectFromCwd: false,
       logWebSocketEvents: false,
+      hosted: resolveHostedControlPlaneConfig({
+        mode: "desktop",
+        accessMode: "invite",
+        allowlistRaw: undefined,
+        magicLinkSecret: "test-hosted-magic-link-secret",
+        magicLinkDevExpose: true,
+      }),
       ...options?.config,
     };
     const layerConfig = Layer.succeed(ServerConfig, config);
@@ -352,7 +359,7 @@ const buildAppUnderTest = (options?: {
         })
       : GitStatusBroadcasterLive.pipe(Layer.provide(gitManagerLayer));
 
-    const servedRoutesLayer = HttpRouter.serve(makeRoutesLayer, {
+    const servedRoutesLayer = HttpRouter.serve(makeCoreRoutesLayer, {
       disableListenLog: true,
       disableLogger: true,
     }).pipe(

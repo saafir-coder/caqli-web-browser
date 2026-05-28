@@ -3,7 +3,8 @@ import { useState } from "react";
 
 import { createHostedProject, HOSTED_ACTIVE_PROJECT_ID_KEY } from "../hosted/controlPlane/projects";
 import { HostedAuthPageChrome } from "../hosted/HostedAuthPageChrome";
-import { isHostedAuthConfigured } from "../hosted/config";
+import { fetchHostedSession } from "../hosted/apiClient";
+import { isHostedAuthConfigured, isHostedControlPlaneConfigured } from "../hosted/config";
 import { writeHostedProfileComplete } from "../hosted/onboardingStorage";
 import { getSupabaseBrowserClient } from "../hosted/supabaseClient";
 
@@ -37,11 +38,18 @@ function OnboardingPage() {
     setBusy(true);
     setProvisioning(true);
     try {
-      const supabase = getSupabaseBrowserClient();
-      const {
-        data: { session },
-      } = await supabase.auth.getSession();
-      const userId = session?.user?.id;
+      let userId: string | undefined;
+      let supabase = null;
+      if (isHostedControlPlaneConfigured()) {
+        const session = await fetchHostedSession();
+        userId = session.user?.id;
+      } else {
+        supabase = getSupabaseBrowserClient();
+        const {
+          data: { session },
+        } = await supabase.auth.getSession();
+        userId = session?.user?.id;
+      }
       if (!userId) {
         setError("Your session expired. Sign in again from the welcome screen.");
         return;

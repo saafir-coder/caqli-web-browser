@@ -1,9 +1,15 @@
 import { createFileRoute, redirect, useNavigate } from "@tanstack/react-router";
 import { useState } from "react";
 
+import { requestHostedMagicLink } from "../hosted/apiClient";
 import { assertEmailMayRequestMagicLink } from "../hosted/checkHostedAccess";
 import { HostedAuthPageChrome } from "../hosted/HostedAuthPageChrome";
-import { isHostedAuthConfigured } from "../hosted/config";
+import {
+  isHostedAuthConfigured,
+  isHostedControlPlaneConfigured,
+  isSupabaseHostedAuthConfigured,
+} from "../hosted/config";
+import { hasHostedControlPlaneSession } from "../hosted/hostedSession";
 import { readHostedProfileComplete } from "../hosted/onboardingStorage";
 import { getSupabaseBrowserClient } from "../hosted/supabaseClient";
 
@@ -11,6 +17,15 @@ export const Route = createFileRoute("/welcome")({
   beforeLoad: async () => {
     if (!isHostedAuthConfigured()) {
       throw redirect({ to: "/pair", replace: true });
+    }
+    if (isHostedControlPlaneConfigured()) {
+      if (await hasHostedControlPlaneSession()) {
+        if (readHostedProfileComplete()) {
+          throw redirect({ to: "/", replace: true });
+        }
+        throw redirect({ to: "/onboarding", replace: true });
+      }
+      return;
     }
     const supabase = getSupabaseBrowserClient();
     const {
@@ -40,15 +55,27 @@ function WelcomePage() {
       setError("Enter your email.");
       return;
     }
-    const access = assertEmailMayRequestMagicLink(trimmed);
+    const access = await assertEmailMayRequestMagicLink(trimmed);
     if (!access.ok) {
       setError(access.userMessage);
       return;
     }
     setBusy(true);
     try {
-      const supabase = getSupabaseBrowserClient();
       const redirectTo = `${window.location.origin}/auth/callback`;
+      if (isHostedControlPlaneConfigured()) {
+        const result = await requestHostedMagicLink({ email: trimmed, redirectTo });
+        if (import.meta.env.DEV && result.devMagicLink) {
+          console.info("[hosted auth] dev magic link:", result.devMagicLink);
+        }
+        void navigate({ to: "/check-email", replace: false });
+        return;
+      }
+      if (!isSupabaseHostedAuthConfigured()) {
+        setError("Hosted sign-in is not configured.");
+        return;
+      }
+      const supabase = getSupabaseBrowserClient();
       const { error: signErr } = await supabase.auth.signInWithOtp({
         email: trimmed,
         options: { emailRedirectTo: redirectTo },

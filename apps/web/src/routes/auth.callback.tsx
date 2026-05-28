@@ -1,10 +1,11 @@
 import { createFileRoute, redirect, useNavigate } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 
+import { completeHostedMagicLinkCallback } from "../hosted/apiClient";
 import { assertSessionMayEnterApp } from "../hosted/checkHostedAccess";
 import { HostedAuthPageChrome } from "../hosted/HostedAuthPageChrome";
 import { readHostedProfileComplete } from "../hosted/onboardingStorage";
-import { isHostedAuthConfigured } from "../hosted/config";
+import { isHostedAuthConfigured, isHostedControlPlaneConfigured } from "../hosted/config";
 import { getSupabaseBrowserClient } from "../hosted/supabaseClient";
 
 export const Route = createFileRoute("/auth/callback")({
@@ -23,6 +24,26 @@ function AuthCallbackPage() {
   useEffect(() => {
     const run = async () => {
       try {
+        if (isHostedControlPlaneConfigured()) {
+          const token = new URL(window.location.href).searchParams.get("token");
+          if (!token) {
+            setMessage("Missing sign-in token. Request a new link from the welcome page.");
+            return;
+          }
+          const result = await completeHostedMagicLinkCallback(token);
+          const access = await assertSessionMayEnterApp(result.user.email);
+          if (!access.ok) {
+            setMessage(access.userMessage);
+            return;
+          }
+          if (readHostedProfileComplete()) {
+            void navigate({ to: "/", replace: true });
+          } else {
+            void navigate({ to: "/onboarding", replace: true });
+          }
+          return;
+        }
+
         const supabase = getSupabaseBrowserClient();
         const {
           data: { session },
@@ -36,7 +57,7 @@ function AuthCallbackPage() {
           setMessage("No active session. Request a new link from the welcome page.");
           return;
         }
-        const access = assertSessionMayEnterApp(session.user.email);
+        const access = await assertSessionMayEnterApp(session.user.email);
         if (!access.ok) {
           await supabase.auth.signOut();
           setMessage(access.userMessage);

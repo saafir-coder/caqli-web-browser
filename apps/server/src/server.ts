@@ -72,6 +72,8 @@ import {
   orchestrationDispatchRouteLayer,
   orchestrationSnapshotRouteLayer,
 } from "./orchestration/http";
+import { HostedControlPlaneLive } from "./hosted/Layers/HostedControlPlane.ts";
+import { hostedRouteLayers } from "./hosted/http.ts";
 
 const PtyAdapterLive = Layer.unwrap(
   Effect.gen(function* () {
@@ -194,6 +196,8 @@ const AuthLayerLive = ServerAuthLive.pipe(
   Layer.provide(ServerSecretStoreLive),
 );
 
+const HostedLayerLive = HostedControlPlaneLive.pipe(Layer.provideMerge(PersistenceLayerLive));
+
 const RuntimeDependenciesLive = ReactorLayerLive.pipe(
   // Core Services
   Layer.provideMerge(CheckpointingLayerLive),
@@ -210,6 +214,7 @@ const RuntimeDependenciesLive = ReactorLayerLive.pipe(
   Layer.provideMerge(RepositoryIdentityResolverLive),
   Layer.provideMerge(ServerEnvironmentLive),
   Layer.provideMerge(AuthLayerLive),
+  Layer.provideMerge(HostedLayerLive),
 
   // Misc.
   Layer.provideMerge(AnalyticsServiceLayerLive),
@@ -221,7 +226,7 @@ const RuntimeServicesLive = ServerRuntimeStartupLive.pipe(
   Layer.provideMerge(RuntimeDependenciesLive),
 );
 
-export const makeRoutesLayer = Layer.mergeAll(
+export const makeCoreRoutesLayer = Layer.mergeAll(
   authBearerBootstrapRouteLayer,
   authBootstrapRouteLayer,
   authClientsRevokeOthersRouteLayer,
@@ -241,6 +246,11 @@ export const makeRoutesLayer = Layer.mergeAll(
   staticAndDevRouteLayer,
   websocketRpcRouteLayer,
 ).pipe(Layer.provide(browserApiCorsLayer));
+
+export const makeRoutesLayer = Layer.mergeAll(
+  makeCoreRoutesLayer,
+  Layer.mergeAll(...hostedRouteLayers),
+);
 
 export const makeServerLayer = Layer.unwrap(
   Effect.gen(function* () {
@@ -296,8 +306,4 @@ export const makeServerLayer = Layer.unwrap(
 );
 
 // Important: Only `ServerConfig` should be provided by the CLI layer!!! Don't let other requirements leak into the launch layer.
-export const runServer = Layer.launch(makeServerLayer) satisfies Effect.Effect<
-  never,
-  any,
-  ServerConfig
->;
+export const runServer = Layer.launch(makeServerLayer);

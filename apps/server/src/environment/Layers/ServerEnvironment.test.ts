@@ -3,7 +3,12 @@ import * as NodeServices from "@effect/platform-node/NodeServices";
 import { expect, it } from "@effect/vitest";
 import { Effect, Exit, FileSystem, Layer, PlatformError } from "effect";
 
-import { deriveServerPaths, ServerConfig, type ServerConfigShape } from "../../config.ts";
+import {
+  deriveServerPaths,
+  resolveHostedControlPlaneConfig,
+  ServerConfig,
+  type ServerConfigShape,
+} from "../../config.ts";
 import { ServerEnvironment } from "../Services/ServerEnvironment.ts";
 import { ServerEnvironmentLive } from "./ServerEnvironment.ts";
 
@@ -37,6 +42,13 @@ const makeServerConfig = Effect.fn(function* (baseDir: string) {
     devUrl: undefined,
     noBrowser: false,
     startupPresentation: "browser",
+    hosted: resolveHostedControlPlaneConfig({
+      mode: "web",
+      accessMode: "invite",
+      allowlistRaw: undefined,
+      magicLinkSecret: "test-hosted-magic-link-secret",
+      magicLinkDevExpose: true,
+    }),
   } satisfies ServerConfigShape;
 });
 

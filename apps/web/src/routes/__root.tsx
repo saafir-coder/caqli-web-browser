@@ -44,18 +44,27 @@ import {
   resolveInitialServerAuthGateState,
   updatePrimaryEnvironmentDescriptor,
 } from "../environments/primary";
-import { isHostedAuthConfigured, isPublicHostedAuthPath } from "../hosted/config";
+import { isHostedAuthConfigured, isHostedT3DeferredPath } from "../hosted/config";
 import { isHostedMinimalChromePath } from "../hosted/hostedLayoutPaths";
 
 export const Route = createRootRouteWithContext<{
   queryClient: QueryClient;
 }>()({
   beforeLoad: async ({ location }) => {
-    const publicHostedEntry = isHostedAuthConfigured() && isPublicHostedAuthPath(location.pathname);
-    const [, authGateState] = await Promise.all([
-      publicHostedEntry ? Promise.resolve() : ensurePrimaryEnvironmentReady(),
-      resolveInitialServerAuthGateState({ publicHostedEntry }),
-    ]);
+    const pathname = location.pathname;
+    const hostedDeferT3 = isHostedAuthConfigured() && isHostedT3DeferredPath(pathname);
+
+    const authGateState = await resolveInitialServerAuthGateState({
+      publicHostedEntry: hostedDeferT3,
+    });
+
+    const shouldBootstrapPrimaryEnvironment =
+      !isHostedAuthConfigured() || !hostedDeferT3 || authGateState.status === "authenticated";
+
+    if (shouldBootstrapPrimaryEnvironment) {
+      await ensurePrimaryEnvironmentReady();
+    }
+
     return {
       authGateState,
     };

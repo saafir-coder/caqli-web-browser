@@ -1,5 +1,7 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 
+import { createHostedProjectOnServer } from "../apiClient";
+import { isHostedControlPlaneConfigured } from "../config";
 import { provisionWorkspacePath } from "./poolWorkspace";
 import type { HostedProject } from "./types";
 
@@ -121,10 +123,25 @@ export async function listHostedProjects(
  * user submits the same trimmed name again (returns the existing row).
  */
 export async function createHostedProject(
-  supabase: SupabaseClient,
+  supabase: SupabaseClient | null,
   userId: string,
   name: string,
 ): Promise<HostedProject> {
+  if (isHostedControlPlaneConfigured()) {
+    const project = await createHostedProjectOnServer(name);
+    return {
+      id: project.id,
+      user_id: project.userId,
+      name: project.name,
+      workspace_path: project.workspacePath,
+      created_at: project.createdAt,
+    };
+  }
+
+  if (!supabase) {
+    throw new Error("Hosted project storage is not configured.");
+  }
+
   const trimmed = name.trim();
   if (!trimmed) {
     throw new Error("Project name is required.");

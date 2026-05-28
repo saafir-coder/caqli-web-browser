@@ -1,12 +1,10 @@
-import { isHostedAuthConfigured, isHostedControlPlaneConfigured } from "./config";
-
 export type HostedAccessMode = "open" | "invite";
 
 export type HostedAccessDenyReason = "not_on_allowlist" | "invite_only";
 
 export type HostedAccessDecision = {
-  allowed: boolean;
-  reason?: HostedAccessDenyReason;
+  readonly allowed: boolean;
+  readonly reason?: HostedAccessDenyReason;
 };
 
 export function normalizeHostedEmail(email: string): string {
@@ -27,23 +25,9 @@ export function parseAllowlistEmails(raw: string | undefined): Set<string> {
   return emails;
 }
 
-export function resolveHostedAccessMode(): HostedAccessMode {
-  const raw = import.meta.env.VITE_HOSTED_ACCESS_MODE?.trim().toLowerCase() ?? "";
-  if (raw === "open") {
-    return "open";
-  }
-  if (raw === "invite") {
-    return "invite";
-  }
-  if (isHostedAuthConfigured()) {
-    return "invite";
-  }
-  return "open";
-}
-
 export function decideHostedAccess(
   email: string,
-  allowlist: Set<string>,
+  allowlist: ReadonlySet<string>,
   mode: HostedAccessMode,
 ): HostedAccessDecision {
   if (mode === "open") {
@@ -58,19 +42,4 @@ export function decideHostedAccess(
     return { allowed: false, reason: "not_on_allowlist" };
   }
   return { allowed: true };
-}
-
-export function readHostedAllowlistFromEnv(): Set<string> {
-  return parseAllowlistEmails(import.meta.env.VITE_HOSTED_ALLOWLIST_EMAILS);
-}
-
-export function isHostedAccessEnforced(): boolean {
-  if (!isHostedAuthConfigured()) {
-    return false;
-  }
-  if (isHostedControlPlaneConfigured()) {
-    const raw = import.meta.env.VITE_HOSTED_ACCESS_MODE?.trim().toLowerCase() ?? "invite";
-    return raw !== "open";
-  }
-  return resolveHostedAccessMode() === "invite";
 }

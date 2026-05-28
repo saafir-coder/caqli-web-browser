@@ -22,12 +22,23 @@ Tenancy: API must scope all queries by authenticated `user_id` (replace interim 
 
 **Interim:** `supabase/migrations/20260528120000_hosted_control_plane.sql` mirrors the same tables for local/dogfood Supabase—do not treat as production topology.
 
-## Client modules (transition)
+## Server API (VPS control plane)
 
-- `apps/web/src/hosted/controlPlane/poolWorkspace.ts` — `provisionWorkspacePath`
-- `apps/web/src/hosted/controlPlane/projects.ts` — `createHostedProject` (today: Supabase client; **migrate** to `POST /api/hosted/projects`)
+| Method | Path | Purpose |
+|--------|------|---------|
+| GET | `/api/health` | Liveness |
+| POST | `/api/hosted/access/check` | Invite allowlist (server-enforced) |
+| POST | `/api/hosted/auth/magic-link` | Issue magic link |
+| GET | `/api/hosted/auth/callback?token=…` | Complete sign-in, set session cookie |
+| GET | `/api/hosted/session` | Hosted user session |
+| GET/POST | `/api/hosted/projects` | List / create projects |
 
-Onboarding (`/onboarding`) should call the server API once VPS control plane is live.
+## Client modules
+
+- `apps/web/src/hosted/apiClient.ts` — control plane HTTP client
+- `apps/web/src/hosted/controlPlane/projects.ts` — uses API when `VITE_API_URL` / `VITE_HTTP_URL` is set (no Supabase); Supabase remains interim fallback
+
+Onboarding (`/onboarding`) calls `POST /api/hosted/projects` when the control plane is configured.
 
 ## Local dogfood (optional, interim)
 

@@ -5,6 +5,8 @@ import {
   resolveHostedAccessMode,
   type HostedAccessDenyReason,
 } from "./accessAllowlist";
+import { checkHostedAccessOnServer } from "./apiClient";
+import { isHostedControlPlaneConfigured } from "./config";
 
 export type HostedAccessCheckResult = { ok: true } | { ok: false; userMessage: string };
 
@@ -15,9 +17,24 @@ function userMessageForDenyReason(reason: HostedAccessDenyReason | undefined): s
   return "Caqli is invite-only during dogfood. Sign in with an approved email.";
 }
 
-function checkHostedEmailAccess(email: string): HostedAccessCheckResult {
+async function checkHostedEmailAccess(email: string): Promise<HostedAccessCheckResult> {
   if (!isHostedAccessEnforced()) {
     return { ok: true };
+  }
+
+  if (isHostedControlPlaneConfigured()) {
+    try {
+      const decision = await checkHostedAccessOnServer(email);
+      if (decision.allowed) {
+        return { ok: true };
+      }
+      return { ok: false, userMessage: userMessageForDenyReason(decision.reason) };
+    } catch {
+      return {
+        ok: false,
+        userMessage: "Could not verify access. Check your connection and try again.",
+      };
+    }
   }
 
   const mode = resolveHostedAccessMode();
@@ -29,11 +46,15 @@ function checkHostedEmailAccess(email: string): HostedAccessCheckResult {
   return { ok: false, userMessage: userMessageForDenyReason(decision.reason) };
 }
 
-export function assertEmailMayRequestMagicLink(email: string): HostedAccessCheckResult {
+export async function assertEmailMayRequestMagicLink(
+  email: string,
+): Promise<HostedAccessCheckResult> {
   return checkHostedEmailAccess(email);
 }
 
-export function assertSessionMayEnterApp(email: string | undefined): HostedAccessCheckResult {
+export async function assertSessionMayEnterApp(
+  email: string | undefined,
+): Promise<HostedAccessCheckResult> {
   if (!isHostedAccessEnforced()) {
     return { ok: true };
   }

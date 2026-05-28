@@ -5,8 +5,9 @@ import { ConfigProvider, Effect, FileSystem, Layer, Option, Path } from "effect"
 
 import { NetService } from "@t3tools/shared/Net";
 import * as NodeServices from "@effect/platform-node/NodeServices";
-import { deriveServerPaths } from "./config";
+import { deriveServerPaths, resolveHostedControlPlaneConfig } from "./config";
 import { resolveServerConfig } from "./cli";
+import type { RuntimeMode } from "./config";
 
 it.layer(NodeServices.layer)("cli config resolution", (it) => {
   const defaultObservabilityConfig = {
@@ -20,6 +21,15 @@ it.layer(NodeServices.layer)("cli config resolution", (it) => {
     otlpExportIntervalMs: 10_000,
     otlpServiceName: "t3-server",
   } as const;
+
+  const hostedConfigForMode = (mode: RuntimeMode) =>
+    resolveHostedControlPlaneConfig({
+      mode,
+      accessMode: "invite",
+      allowlistRaw: undefined,
+      magicLinkSecret: undefined,
+      magicLinkDevExpose: false,
+    });
 
   const openBootstrapFd = Effect.fn(function* (payload: Record<string, unknown>) {
     const fs = yield* FileSystem.FileSystem;
@@ -87,6 +97,7 @@ it.layer(NodeServices.layer)("cli config resolution", (it) => {
         desktopBootstrapToken: undefined,
         autoBootstrapProjectFromCwd: false,
         logWebSocketEvents: true,
+        hosted: hostedConfigForMode("desktop"),
       });
     }),
   );
@@ -149,6 +160,7 @@ it.layer(NodeServices.layer)("cli config resolution", (it) => {
         desktopBootstrapToken: undefined,
         autoBootstrapProjectFromCwd: true,
         logWebSocketEvents: true,
+        hosted: hostedConfigForMode("web"),
       });
     }),
   );
@@ -212,6 +224,7 @@ it.layer(NodeServices.layer)("cli config resolution", (it) => {
         desktopBootstrapToken: undefined,
         autoBootstrapProjectFromCwd: false,
         logWebSocketEvents: false,
+        hosted: hostedConfigForMode("web"),
       });
     }),
   );
@@ -281,6 +294,7 @@ it.layer(NodeServices.layer)("cli config resolution", (it) => {
         desktopBootstrapToken: undefined,
         autoBootstrapProjectFromCwd: false,
         logWebSocketEvents: true,
+        hosted: hostedConfigForMode("desktop"),
       });
       assert.equal(join(baseDir, "dev"), resolved.stateDir);
     }),
@@ -399,6 +413,7 @@ it.layer(NodeServices.layer)("cli config resolution", (it) => {
         desktopBootstrapToken: undefined,
         autoBootstrapProjectFromCwd: true,
         logWebSocketEvents: true,
+        hosted: hostedConfigForMode("web"),
       });
     }),
   );
@@ -463,6 +478,7 @@ it.layer(NodeServices.layer)("cli config resolution", (it) => {
         desktopBootstrapToken: undefined,
         autoBootstrapProjectFromCwd: false,
         logWebSocketEvents: false,
+        hosted: hostedConfigForMode("desktop"),
       });
     }),
   );
@@ -522,6 +538,7 @@ it.layer(NodeServices.layer)("cli config resolution", (it) => {
         desktopBootstrapToken: undefined,
         autoBootstrapProjectFromCwd: false,
         logWebSocketEvents: false,
+        hosted: hostedConfigForMode("web"),
       });
     }),
   );

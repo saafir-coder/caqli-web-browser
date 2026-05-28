@@ -15,9 +15,14 @@ import { useThreadSelectionStore } from "../threadSelectionStore";
 import { resolveSidebarNewThreadEnvMode } from "~/components/Sidebar.logic";
 import { useSettings } from "~/hooks/useSettings";
 import { useServerKeybindings } from "~/rpc/serverState";
+import { fetchHostedSession } from "../hosted/apiClient";
 import { assertSessionMayEnterApp } from "../hosted/checkHostedAccess";
 import { getSupabaseBrowserClient } from "../hosted/supabaseClient";
-import { isHostedAuthConfigured } from "../hosted/config";
+import {
+  isHostedAuthConfigured,
+  isHostedControlPlaneConfigured,
+  isSupabaseHostedAuthConfigured,
+} from "../hosted/config";
 import { readHostedCodexConnected } from "../hosted/hostedCodexConnection";
 import { readHostedProfileComplete } from "../hosted/onboardingStorage";
 
@@ -122,32 +127,58 @@ export const Route = createFileRoute("/_chat")({
     }
 
     if (isHostedAuthConfigured()) {
-      let session: Session | null = null;
-      let supabase: ReturnType<typeof getSupabaseBrowserClient> | null = null;
-      try {
-        supabase = getSupabaseBrowserClient();
-        session = (await supabase.auth.getSession()).data.session ?? null;
-      } catch {
-        session = null;
-      }
-      if (session) {
-        const access = assertSessionMayEnterApp(session.user.email);
-        if (!access.ok) {
-          if (supabase) {
-            await supabase.auth.signOut();
+      let hostedEmail: string | undefined;
+      if (isHostedControlPlaneConfigured()) {
+        const hostedSession = await fetchHostedSession();
+        hostedEmail = hostedSession.user?.email;
+        if (hostedSession.authenticated && hostedEmail) {
+          const access = await assertSessionMayEnterApp(hostedEmail);
+          if (!access.ok) {
+            throw redirect({
+              to: "/access-denied",
+              search: { message: access.userMessage },
+              replace: true,
+            });
           }
-          throw redirect({
-            to: "/access-denied",
-            search: { message: access.userMessage },
-            replace: true,
-          });
         }
-      }
-      if (session && !readHostedProfileComplete()) {
-        throw redirect({ to: "/onboarding", replace: true });
-      }
-      if (session && readHostedProfileComplete() && !readHostedCodexConnected()) {
-        throw redirect({ to: "/connect-provider", replace: true });
+        if (hostedSession.authenticated && !readHostedProfileComplete()) {
+          throw redirect({ to: "/onboarding", replace: true });
+        }
+        if (
+          hostedSession.authenticated &&
+          readHostedProfileComplete() &&
+          !readHostedCodexConnected()
+        ) {
+          throw redirect({ to: "/connect-provider", replace: true });
+        }
+      } else if (isSupabaseHostedAuthConfigured()) {
+        let session: Session | null = null;
+        let supabase: ReturnType<typeof getSupabaseBrowserClient> | null = null;
+        try {
+          supabase = getSupabaseBrowserClient();
+          session = (await supabase.auth.getSession()).data.session ?? null;
+        } catch {
+          session = null;
+        }
+        if (session) {
+          const access = await assertSessionMayEnterApp(session.user.email);
+          if (!access.ok) {
+            if (supabase) {
+              await supabase.auth.signOut();
+            }
+            throw redirect({
+              to: "/access-denied",
+              search: { message: access.userMessage },
+              replace: true,
+            });
+          }
+        }
+        if (session && !readHostedProfileComplete()) {
+          throw redirect({ to: "/onboarding", replace: true });
+        }
+        if (session && readHostedProfileComplete() && !readHostedCodexConnected()) {
+          throw redirect({ to: "/connect-provider", replace: true });
+        }
       }
     }
   },

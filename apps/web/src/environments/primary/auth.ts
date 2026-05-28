@@ -17,7 +17,11 @@ import {
 
 import { resolvePrimaryEnvironmentHttpUrl } from "./target";
 import { Data, Predicate } from "effect";
-import { isHostedAuthConfigured } from "../../hosted/config";
+import {
+  isHostedAuthConfigured,
+  isHostedControlPlaneConfigured,
+  isSupabaseHostedAuthConfigured,
+} from "../../hosted/config";
 import { getSupabaseBrowserClient } from "../../hosted/supabaseClient";
 
 export class BootstrapHttpError extends Data.TaggedError("BootstrapHttpError")<{
@@ -358,7 +362,24 @@ export async function resolveInitialServerAuthGateState(options?: {
     return resolvedAuthenticatedGateState;
   }
 
-  if (isHostedAuthConfigured()) {
+  if (isHostedControlPlaneConfigured()) {
+    try {
+      const session = await fetchSessionState();
+      if (session.authenticated) {
+        const gate: ServerAuthGateState = { status: "authenticated" };
+        resolvedAuthenticatedGateState = gate;
+        return gate;
+      }
+      if (options?.publicHostedEntry) {
+        return {
+          status: "requires-auth",
+          auth: HOSTED_PUBLIC_AUTH_PLACEHOLDER,
+        };
+      }
+    } catch {
+      // Fall through to pairing bootstrap when the API is unreachable.
+    }
+  } else if (isSupabaseHostedAuthConfigured()) {
     try {
       const supabase = getSupabaseBrowserClient();
       const {
