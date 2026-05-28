@@ -1,20 +1,22 @@
 import { createFileRoute, redirect, useNavigate } from "@tanstack/react-router";
 import { useState } from "react";
 
-import { createHostedProject, HOSTED_ACTIVE_PROJECT_ID_KEY } from "../hosted/controlPlane/projects";
+import { createHostedProject } from "../hosted/controlPlane/projects";
 import { HostedAuthPageChrome } from "../hosted/HostedAuthPageChrome";
-import { fetchHostedSession } from "../hosted/apiClient";
-import { isHostedAuthConfigured, isHostedControlPlaneConfigured } from "../hosted/config";
+import { isHostedControlPlaneConfigured } from "../hosted/config";
+import { getHostedSession } from "../hosted/hostedClient";
+import { resolveHostedOnboardingRedirect } from "../hosted/hostedAppGate";
 import { writeHostedProfileComplete } from "../hosted/onboardingStorage";
+import { writeHostedActiveProjectId } from "../hosted/sessionResume";
 import { getSupabaseBrowserClient } from "../hosted/supabaseClient";
 
 export const Route = createFileRoute("/onboarding")({
   beforeLoad: async ({ context }) => {
-    if (!isHostedAuthConfigured()) {
-      throw redirect({ to: "/pair", replace: true });
-    }
-    if (context.authGateState.status !== "authenticated") {
-      throw redirect({ to: "/welcome", replace: true });
+    const hostedRedirect = await resolveHostedOnboardingRedirect(
+      context.authGateState.status === "authenticated",
+    );
+    if (hostedRedirect) {
+      throw redirect(hostedRedirect);
     }
   },
   component: OnboardingPage,
@@ -41,7 +43,7 @@ function OnboardingPage() {
       let userId: string | undefined;
       let supabase = null;
       if (isHostedControlPlaneConfigured()) {
-        const session = await fetchHostedSession();
+        const session = await getHostedSession();
         userId = session.user?.id;
       } else {
         supabase = getSupabaseBrowserClient();
@@ -59,10 +61,10 @@ function OnboardingPage() {
 
       try {
         globalThis.localStorage?.setItem("caqli.hostedFirstProjectName", trimmed);
-        globalThis.localStorage?.setItem(HOSTED_ACTIVE_PROJECT_ID_KEY, project.id);
       } catch {
         /* ignore */
       }
+      writeHostedActiveProjectId(project.id);
 
       writeHostedProfileComplete();
       void navigate({ to: "/connect-provider", replace: true });

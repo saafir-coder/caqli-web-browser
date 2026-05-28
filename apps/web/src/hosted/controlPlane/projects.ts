@@ -1,13 +1,15 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 
-import { createHostedProjectOnServer } from "../apiClient";
+import { provisionWorkspacePath } from "@t3tools/shared/hosted/poolWorkspace";
+
+import { createHostedProjectOnServer } from "../hostedClient";
 import { isHostedControlPlaneConfigured } from "../config";
-import { provisionWorkspacePath } from "./poolWorkspace";
+import { HOSTED_ACTIVE_PROJECT_ID_KEY } from "../sessionResume";
 import type { HostedProject } from "./types";
 
 const PENDING_QUEUE_KEY = "caqli.hostedProjectPendingQueue";
 
-export const HOSTED_ACTIVE_PROJECT_ID_KEY = "caqli.hostedActiveProjectId";
+export { HOSTED_ACTIVE_PROJECT_ID_KEY };
 
 type HostedProjectRow = {
   id: string;

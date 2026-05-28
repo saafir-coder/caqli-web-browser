@@ -1,41 +1,21 @@
 import { createFileRoute, redirect, useNavigate } from "@tanstack/react-router";
 import { useState } from "react";
 
-import { requestHostedMagicLink } from "../hosted/apiClient";
 import { assertEmailMayRequestMagicLink } from "../hosted/checkHostedAccess";
 import { HostedAuthPageChrome } from "../hosted/HostedAuthPageChrome";
 import {
-  isHostedAuthConfigured,
   isHostedControlPlaneConfigured,
   isSupabaseHostedAuthConfigured,
 } from "../hosted/config";
-import { hasHostedControlPlaneSession } from "../hosted/hostedSession";
-import { readHostedProfileComplete } from "../hosted/onboardingStorage";
+import { requestHostedMagicLink } from "../hosted/hostedClient";
+import { resolveHostedWelcomeRedirect } from "../hosted/hostedAppGate";
 import { getSupabaseBrowserClient } from "../hosted/supabaseClient";
 
 export const Route = createFileRoute("/welcome")({
   beforeLoad: async () => {
-    if (!isHostedAuthConfigured()) {
-      throw redirect({ to: "/pair", replace: true });
-    }
-    if (isHostedControlPlaneConfigured()) {
-      if (await hasHostedControlPlaneSession()) {
-        if (readHostedProfileComplete()) {
-          throw redirect({ to: "/", replace: true });
-        }
-        throw redirect({ to: "/onboarding", replace: true });
-      }
-      return;
-    }
-    const supabase = getSupabaseBrowserClient();
-    const {
-      data: { session },
-    } = await supabase.auth.getSession();
-    if (session) {
-      if (readHostedProfileComplete()) {
-        throw redirect({ to: "/", replace: true });
-      }
-      throw redirect({ to: "/onboarding", replace: true });
+    const hostedRedirect = await resolveHostedWelcomeRedirect();
+    if (hostedRedirect) {
+      throw redirect(hostedRedirect);
     }
   },
   component: WelcomePage,

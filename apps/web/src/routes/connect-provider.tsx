@@ -3,20 +3,17 @@ import { useState } from "react";
 
 import { connectCodexProvider } from "../hosted/hostedCodexConnection";
 import { HostedAuthPageChrome } from "../hosted/HostedAuthPageChrome";
-import { isHostedAuthConfigured } from "../hosted/config";
-import { readHostedProfileComplete } from "../hosted/onboardingStorage";
+import { resolveHostedConnectProviderRedirect } from "../hosted/hostedAppGate";
 import { AGENT_PROVIDERS, ProviderKind } from "../hosted/providers/registry";
+import { syncHostedActiveProjectForSessionResume } from "../hosted/sessionResume";
 
 export const Route = createFileRoute("/connect-provider")({
   beforeLoad: async ({ context }) => {
-    if (!isHostedAuthConfigured()) {
-      throw redirect({ to: "/pair", replace: true });
-    }
-    if (context.authGateState.status !== "authenticated") {
-      throw redirect({ to: "/welcome", replace: true });
-    }
-    if (!readHostedProfileComplete()) {
-      throw redirect({ to: "/onboarding", replace: true });
+    const hostedRedirect = await resolveHostedConnectProviderRedirect(
+      context.authGateState.status === "authenticated",
+    );
+    if (hostedRedirect) {
+      throw redirect(hostedRedirect);
     }
   },
   component: ConnectProviderPage,
@@ -39,6 +36,7 @@ function ConnectProviderPage() {
     setBusy(true);
     try {
       await connectCodexProvider(trimmed);
+      await syncHostedActiveProjectForSessionResume();
       void navigate({ to: "/", replace: true });
     } catch (err) {
       setError(err instanceof Error ? err.message : "Could not connect Codex.");

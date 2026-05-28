@@ -22,6 +22,7 @@ import {
   isHostedControlPlaneConfigured,
   isSupabaseHostedAuthConfigured,
 } from "../../hosted/config";
+import { getHostedSession } from "../../hosted/hostedClient";
 import { getSupabaseBrowserClient } from "../../hosted/supabaseClient";
 
 export class BootstrapHttpError extends Data.TaggedError("BootstrapHttpError")<{
@@ -364,7 +365,7 @@ export async function resolveInitialServerAuthGateState(options?: {
 
   if (isHostedControlPlaneConfigured()) {
     try {
-      const session = await fetchSessionState();
+      const session = await getHostedSession();
       if (session.authenticated) {
         const gate: ServerAuthGateState = { status: "authenticated" };
         resolvedAuthenticatedGateState = gate;

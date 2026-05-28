@@ -5,7 +5,7 @@ import {
   resolveHostedAccessMode,
   type HostedAccessDenyReason,
 } from "./accessAllowlist";
-import { checkHostedAccessOnServer } from "./apiClient";
+import { checkHostedAccessOnServer } from "./hostedClient";
 import { isHostedControlPlaneConfigured } from "./config";
 
 export type HostedAccessCheckResult = { ok: true } | { ok: false; userMessage: string };

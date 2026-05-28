@@ -1,11 +1,11 @@
 import { createFileRoute, redirect, useNavigate } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 
-import { completeHostedMagicLinkCallback } from "../hosted/apiClient";
 import { assertSessionMayEnterApp } from "../hosted/checkHostedAccess";
 import { HostedAuthPageChrome } from "../hosted/HostedAuthPageChrome";
-import { readHostedProfileComplete } from "../hosted/onboardingStorage";
 import { isHostedAuthConfigured, isHostedControlPlaneConfigured } from "../hosted/config";
+import { completeHostedMagicLinkCallback } from "../hosted/hostedClient";
+import { resolveHostedPostAuthRedirect } from "../hosted/hostedAppGate";
 import { getSupabaseBrowserClient } from "../hosted/supabaseClient";
 
 export const Route = createFileRoute("/auth/callback")({
@@ -36,11 +36,7 @@ function AuthCallbackPage() {
             setMessage(access.userMessage);
             return;
           }
-          if (readHostedProfileComplete()) {
-            void navigate({ to: "/", replace: true });
-          } else {
-            void navigate({ to: "/onboarding", replace: true });
-          }
+          void navigate(await resolveHostedPostAuthRedirect());
           return;
         }
 
@@ -63,11 +59,7 @@ function AuthCallbackPage() {
           setMessage(access.userMessage);
           return;
         }
-        if (readHostedProfileComplete()) {
-          void navigate({ to: "/", replace: true });
-        } else {
-          void navigate({ to: "/onboarding", replace: true });
-        }
+        void navigate(await resolveHostedPostAuthRedirect());
       } catch (e) {
         setMessage(e instanceof Error ? e.message : "Sign-in failed.");
       }
