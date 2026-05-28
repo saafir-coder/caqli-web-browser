@@ -4,7 +4,7 @@
 
 ## What to build
 
-**Tracer bullet:** After first **Project**, **User** completes **Connect provider** for **Codex** only—full vertical slice: onboarding route (mobile-first, design tokens), submit credential, **envelope-encrypt** and store in Postgres/Supabase, **Client** sees connected/disconnected only, **contracts** updated for provider status enums. **Cursor** and **Claude Code** rows visible with honest **Coming soon** (not fake-connectable). Copy: model usage bills to user's provider account.
+**Tracer bullet:** After first **Project**, **User** completes **Connect provider** for **Codex** only—full vertical slice: onboarding route (mobile-first, design tokens), submit credential, **envelope-encrypt** and store in **control plane Postgres on VPS** (server API), **Client** sees connected/disconnected only, **contracts** updated for provider status enums. **Cursor** and **Claude Code** rows visible with honest **Coming soon** (not fake-connectable). Copy: model usage bills to user's provider account.
 
 Includes minimal **vault** and **registry** needed for Codex—no separate “vault-only” issue. If **User** skips to **Chat** without creds, first **Send** routes here.
 

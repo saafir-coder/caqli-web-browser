@@ -4,7 +4,7 @@
 
 ## What to build
 
-**Tracer bullet (dogfood):** Only **operator-approved** emails can use the hosted product. End-to-end path: **User** enters email on `/welcome` (or landing) → **control plane** checks allowlist → if not approved, **clear messaging** and **no** magic link (or block after callback before app entry—pick one approach and document it). **Operator** can add/remove emails via script, admin route, or Supabase flag. Enforce on **server**, not UI-only.
+**Tracer bullet (dogfood):** Only **operator-approved** emails can use the hosted product. End-to-end path: **User** enters email on `/welcome` (or landing) → **control plane** checks allowlist → if not approved, **clear messaging** and **no** magic link (or block after callback before app entry—pick one approach and document it). **Operator** can add/remove emails via script, admin route, or env allowlist (migrate to Postgres on VPS control plane). Enforce on **server**, not UI-only.
 
 Split from old horizontal “vault/pool/UI” issues; this slice is demoable alone: a blocked email never reaches onboarding.
 

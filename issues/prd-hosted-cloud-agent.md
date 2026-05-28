@@ -19,7 +19,7 @@ Today the web-browser codebase can broker **Agent** sessions on a **T3 server** 
 
 Extend the hosted product in `caqli-web-browser` with:
 
-1. **Control plane** persistence (Auth + Postgres, e.g. Supabase) for **Users**, **Projects**, **Threads**, encrypted **Provider credentials**, **Usage limit** state, **session resume**, and access flags (invite / waitlist).
+1. **Control plane** persistence on **Caqli VPS** (Postgres + server API): **Users**, **Projects**, **Threads**, encrypted **Provider credentials**, **Usage limit** state, **session resume**, and access flags (invite / waitlist). Workspace **files** in object storage (e.g. Cloudflare R2), not on the browser.
 2. **Hosted pool** of shared **Execution environments** (T3 servers) where each **Project** has an isolated **Hosted workspace** (files persist; **Agent runs** are ephemeral).
 3. **Connect provider** onboarding after first **Project** creation, listing **Cursor**, **Codex**, and **Claude Code** with honest **Coming soon** until wired; **Codex** is the dogfood blocker.
 4. **BYO proxy**: server-side decrypt of credentials only when starting outbound provider calls; **Client** never receives secrets after connect.
@@ -98,7 +98,7 @@ Mobile **Client** remains responsive web (PWA later); single deployable product 
 
 ### Architectural (see ADR-0001)
 
-- **Control plane** vs **Execution environment** separation: Postgres/Supabase for identity and metadata; **Hosted pool** T3 servers for workspaces and provider processes.
+- **Control plane** vs **Execution environment** separation: Postgres + API on **Caqli VPS** for identity and metadata; **Hosted pool** T3 servers on the same fleet for agent processes; durable workspace **files** in object storage (see ADR-0001).
 - **Shared hosted pool** for MVP; **Dedicated execution** and **Warm environment** deferred.
 - **Ephemeral Agent runs** with persistent per-**Project** workspace storage.
 - **Client** is remote control only (WebSocket/HTTP); no provider secret material in browser storage after connect.
@@ -115,7 +115,7 @@ Mobile **Client** remains responsive web (PWA later); single deployable product 
 | **Default / thread provider policy**   | Account default; per-thread binding at creation; reject provider swap mid-thread in MVP                                                                  | Pure decision module testable without UI    |
 | **Agent run concurrency gate**         | Enforce one active run per **Project** (dogfood); configurable cap before public                                                                         | Server-side source of truth                 |
 | **Usage gate (hosted compute)**        | Daily Caqli compute budget separate from BYO; soft-block UX                                                                                              | Extends issue 009                           |
-| **Access control**                     | Invite allowlist for dogfood; waitlist capture + operator approve for public v1                                                                          | Supabase RLS or server flags                |
+| **Access control**                     | Invite allowlist for dogfood; waitlist capture + operator approve for public v1                                                                          | Server-enforced flags / Postgres rows       |
 | **Hosted auth client**                 | From shell PRD (issue 001)                                                                                                                               | Outer gate for all modules                  |
 | **Workspace provisioning coordinator** | From issue 003; empty workspace default                                                                                                                  | GitHub import hooks later                   |
 | **Session resume controller**          | From issue 004                                                                                                                                           | Unchanged intent                            |
@@ -151,7 +151,7 @@ Magic link → **Name your first project** (empty **Hosted workspace**) → **Co
 
 - Application-level encryption before write to Postgres.
 - Decrypt only in **Execution environment** process memory for provider calls.
-- Supabase RLS: users read only their rows; no client SELECT on credential ciphertext via anon key patterns that leak secrets.
+- Tenancy enforced in **control plane API** only; no client access to credential ciphertext; no direct Postgres from the browser in production.
 
 ---
 

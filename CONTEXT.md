@@ -66,7 +66,7 @@ _Avoid_: Exposing API keys to the browser after connect.
 
 **Hosted tier**:
 Caqli-operated backend that stores user identity, projects, and usage limits for the first ~100–200 users.
-_v1 engineering (\_PRD scope_):_ Ship **minimum viable hosted** in this repo—multi-tenant persistence for **User**, **Project**, **Thread**, **Usage limit**, and **Session resume**; **Sign-in** via magic link; each **Project** backed by a **Hosted workspace** (1:1 **Environment**). Prefer managed **Auth** + **Postgres** (e.g. **Supabase** or equivalent); exact vendor is an implementation choice, not a domain term. **Pair** stays **dev-only** for v1 production **Users** (see **Pair**); no in-app coexistence with hosted auth in v1.
+_v1 engineering (\_PRD scope_):_ Ship **minimum viable hosted** in this repo—multi-tenant persistence for **User**, **Project**, **Thread**, **Usage limit**, and **Session resume**; **Sign-in** via magic link; each **Project** backed by a **Hosted workspace** (1:1 **Environment**). **Production:** **control plane Postgres + API on Caqli VPS**; workspace files in object storage (e.g. R2); **T3 hosted pool** on the same fleet. Meta ADR: `caqli` repo [docs/adr/0001-hosted-agent-architecture.md](../../../docs/adr/0001-hosted-agent-architecture.md). Interim Supabase-in-browser code is dogfood-only until migrated. **Pair** stays **dev-only** for v1 production **Users** (see **Pair**).
 \_Avoid_: Cloud MVP (legacy product in `caqli-cloud-legacy`).
 
 **Usage limit**:

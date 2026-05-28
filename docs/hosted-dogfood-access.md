@@ -46,7 +46,7 @@ To temporarily open dogfood to all emails, set `VITE_HOSTED_ACCESS_MODE=open`.
 
 ## Migration path
 
-Today the allowlist is **env-based** for a fast tracer bullet. A later slice can move storage to Supabase (table or profile flag) and keep `decideHostedAccess` as the single decision function, swapping `readHostedAllowlistFromEnv()` for an API fetch.
+Today the allowlist is **env-based** for a fast tracer bullet. A later slice should move storage to **VPS control plane Postgres** (table or profile flag) and keep `decideHostedAccess` as the single decision function, swapping `readHostedAllowlistFromEnv()` for an API fetch. Supabase is interim only—see meta ADR-0001.
 
 ## Local development
 

@@ -1,7 +1,7 @@
 # Hosted cloud agent — issue index
 
 **Parent PRD:** [`prd-hosted-cloud-agent.md`](./prd-hosted-cloud-agent.md)  
-**Architecture (meta repo):** `caqli` → `docs/adr/0001-hosted-agent-architecture.md`  
+**Architecture (meta repo):** `caqli` → [ADR-0001](https://github.com/saafir-coder/caqli/blob/main/docs/adr/0001-hosted-agent-architecture.md), [hosted VPS infra](https://github.com/saafir-coder/caqli/blob/main/docs/hosted-vps-infrastructure.md)  
 **Shell PRD (prerequisite):** [`prd.md`](./prd.md) → issues `001`–`012`  
 **Branch:** `feature/hosted-cloud-agent`  
 **Workflow:** meta repo [`.cursor/skills/caqli-delivery-workflow/SKILL.md`](../../../.cursor/skills/caqli-delivery-workflow/SKILL.md)
