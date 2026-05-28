@@ -8,10 +8,7 @@
  */
 import { Effect, FileSystem, Layer, LogLevel, Path, Schema, Context } from "effect";
 
-import {
-  parseAllowlistEmails,
-  type HostedAccessMode,
-} from "./hosted/accessAllowlist.ts";
+import { parseAllowlistEmails, type HostedAccessMode } from "./hosted/accessAllowlist.ts";
 
 export const DEFAULT_PORT = 3773;
 
@@ -21,6 +18,8 @@ export interface HostedControlPlaneConfig {
   readonly allowlistEmails: ReadonlySet<string>;
   readonly magicLinkSecret: string;
   readonly magicLinkDevExpose: boolean;
+  /** HTTPS origin for magic-link redirects in production (e.g. https://app.example.com). */
+  readonly publicOrigin: string | undefined;
 }
 
 export const RuntimeMode = Schema.Literals(["web", "desktop"]);
@@ -87,11 +86,13 @@ export function resolveHostedControlPlaneConfig(input: {
   readonly allowlistRaw: string | undefined;
   readonly magicLinkSecret: string | undefined;
   readonly magicLinkDevExpose: boolean;
+  readonly publicOrigin: string | undefined;
 }): HostedControlPlaneConfig {
   const enabled = input.mode === "web";
+  const configuredSecret = input.magicLinkSecret?.trim() ?? "";
   const magicLinkSecret =
-    input.magicLinkSecret?.trim() ||
-    (enabled ? "caqli-hosted-dev-magic-link-secret-change-me" : "");
+    configuredSecret ||
+    (enabled && input.magicLinkDevExpose ? "caqli-hosted-dev-magic-link-secret-change-me" : "");
 
   return {
     enabled,
@@ -99,6 +100,7 @@ export function resolveHostedControlPlaneConfig(input: {
     allowlistEmails: parseAllowlistEmails(input.allowlistRaw),
     magicLinkSecret,
     magicLinkDevExpose: input.magicLinkDevExpose,
+    publicOrigin: input.publicOrigin?.trim() || undefined,
   };
 }
 
@@ -206,6 +208,7 @@ export class ServerConfig extends Context.Service<ServerConfig, ServerConfigShap
             allowlistRaw: undefined,
             magicLinkSecret: "test-hosted-magic-link-secret",
             magicLinkDevExpose: true,
+            publicOrigin: undefined,
           }),
         } satisfies ServerConfigShape;
       }),

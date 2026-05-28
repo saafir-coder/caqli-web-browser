@@ -87,6 +87,7 @@ const makeCliTestServerConfig = (baseDir: string) =>
         allowlistRaw: undefined,
         magicLinkSecret: "test-hosted-magic-link-secret",
         magicLinkDevExpose: true,
+        publicOrigin: undefined,
       }),
     } satisfies ServerConfigShape;
   });

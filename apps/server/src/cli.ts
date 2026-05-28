@@ -179,11 +179,16 @@ const EnvServerConfig = Config.all({
     Schema.Literals(["open", "invite"] as const),
     "CAQLI_HOSTED_ACCESS_MODE",
   ).pipe(Config.withDefault("invite" satisfies HostedAccessMode)),
-  hostedAllowlistEmails: Config.string("CAQLI_HOSTED_ALLOWLIST_EMAILS").pipe(Config.withDefault("")),
-  hostedMagicLinkSecret: Config.string("CAQLI_HOSTED_MAGIC_LINK_SECRET").pipe(Config.withDefault("")),
+  hostedAllowlistEmails: Config.string("CAQLI_HOSTED_ALLOWLIST_EMAILS").pipe(
+    Config.withDefault(""),
+  ),
+  hostedMagicLinkSecret: Config.string("CAQLI_HOSTED_MAGIC_LINK_SECRET").pipe(
+    Config.withDefault(""),
+  ),
   hostedMagicLinkDevExpose: Config.boolean("CAQLI_HOSTED_MAGIC_LINK_DEV_EXPOSE").pipe(
     Config.withDefault(false),
   ),
+  hostedPublicOrigin: Config.string("CAQLI_HOSTED_PUBLIC_ORIGIN").pipe(Config.withDefault("")),
 });
 
 interface CliServerFlags {
@@ -381,6 +386,7 @@ export const resolveServerConfig = (
         allowlistRaw: env.hostedAllowlistEmails || undefined,
         magicLinkSecret: env.hostedMagicLinkSecret || undefined,
         magicLinkDevExpose: env.hostedMagicLinkDevExpose,
+        publicOrigin: env.hostedPublicOrigin || undefined,
       }),
     };
 

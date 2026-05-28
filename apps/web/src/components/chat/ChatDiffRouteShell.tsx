@@ -171,17 +171,15 @@ export function ChatDiffRouteShell(props: {
   children: ReactNode;
 }) {
   const shouldUseDiffSheet = useMediaQuery(DIFF_INLINE_LAYOUT_MEDIA_QUERY);
-  const hostedMobileDiffSheet =
-    isHostedAuthConfigured() && useMediaQuery(HOSTED_DIFF_SHEET_MEDIA_QUERY);
+  const hostedDiffSheetViewport = useMediaQuery(HOSTED_DIFF_SHEET_MEDIA_QUERY);
+  const hostedMobileDiffSheet = isHostedAuthConfigured() && hostedDiffSheetViewport;
   const sidebarInsetClassName =
     "h-dvh min-h-0 overflow-hidden overscroll-y-none bg-background text-foreground";
 
   if (!shouldUseDiffSheet) {
     return (
       <>
-        <SidebarInset className={sidebarInsetClassName}>
-          {props.children}
-        </SidebarInset>
+        <SidebarInset className={sidebarInsetClassName}>{props.children}</SidebarInset>
         <DiffPanelInlineSidebar
           diffOpen={props.diffOpen}
           onCloseDiff={props.onCloseDiff}

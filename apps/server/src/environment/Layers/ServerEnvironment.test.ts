@@ -48,6 +48,7 @@ const makeServerConfig = Effect.fn(function* (baseDir: string) {
       allowlistRaw: undefined,
       magicLinkSecret: "test-hosted-magic-link-secret",
       magicLinkDevExpose: true,
+      publicOrigin: undefined,
     }),
   } satisfies ServerConfigShape;
 });

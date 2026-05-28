@@ -27,8 +27,9 @@ it.layer(NodeServices.layer)("cli config resolution", (it) => {
       mode,
       accessMode: "invite",
       allowlistRaw: undefined,
-      magicLinkSecret: undefined,
+      magicLinkSecret: mode === "web" ? "test-hosted-magic-link-secret" : undefined,
       magicLinkDevExpose: false,
+      publicOrigin: undefined,
     });
 
   const openBootstrapFd = Effect.fn(function* (payload: Record<string, unknown>) {

@@ -5,7 +5,8 @@ create table public.hosted_projects (
   user_id uuid not null references auth.users (id) on delete cascade,
   name text not null,
   workspace_path text not null unique,
-  created_at timestamptz not null default now()
+  created_at timestamptz not null default now(),
+  unique (user_id, name)
 );
 
 create index hosted_projects_user_id_idx on public.hosted_projects (user_id);

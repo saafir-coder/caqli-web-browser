@@ -91,6 +91,7 @@ export const hostedAuthCallbackRouteLayer = HttpRouter.add(
     const controlPlane = yield* HostedControlPlane;
     const sessions = yield* SessionCredentialService;
     const result = yield* controlPlane.consumeMagicLink(token);
+    const secure = url.value.protocol === "https:";
 
     return yield* HttpServerResponse.jsonUnsafe(
       {
@@ -105,6 +106,7 @@ export const hostedAuthCallbackRouteLayer = HttpRouter.add(
         httpOnly: true,
         path: "/",
         sameSite: "lax",
+        secure,
       }),
     );
   }).pipe(Effect.catchTag("HostedControlPlaneError", respondToHostedError)),
