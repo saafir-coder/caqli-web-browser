@@ -4,7 +4,7 @@ import { useEffect, useState } from "react";
 import { assertSessionMayEnterApp } from "../hosted/checkHostedAccess";
 import { HostedAuthPageChrome } from "../hosted/HostedAuthPageChrome";
 import { isHostedAuthConfigured, isHostedControlPlaneConfigured } from "../hosted/config";
-import { completeHostedMagicLinkCallback } from "../hosted/hostedClient";
+import { completeHostedMagicLinkCallback, signOutHostedSession } from "../hosted/hostedClient";
 import { resolveHostedPostAuthRedirect } from "../hosted/hostedAppGate";
 import { getSupabaseBrowserClient } from "../hosted/supabaseClient";
 
@@ -30,7 +30,13 @@ function AuthCallbackPage() {
             setMessage("Missing sign-in token. Request a new link from the welcome page.");
             return;
           }
-          await completeHostedMagicLinkCallback(token);
+          const result = await completeHostedMagicLinkCallback(token);
+          const access = await assertSessionMayEnterApp(result.user.email);
+          if (!access.ok) {
+            await signOutHostedSession();
+            setMessage(access.userMessage);
+            return;
+          }
           void navigate(await resolveHostedPostAuthRedirect());
           return;
         }
