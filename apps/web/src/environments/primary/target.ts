@@ -36,23 +36,42 @@ export function isLoopbackHostname(hostname: string): boolean {
   return LOOPBACK_HOSTNAMES.has(normalizeHostname(hostname));
 }
 
+function loopbackHttpOriginsMatch(left: URL, right: URL): boolean {
+  if (left.origin === right.origin) {
+    return true;
+  }
+  if (left.protocol !== right.protocol || left.port !== right.port) {
+    return false;
+  }
+  return isLoopbackHostname(left.hostname) && isLoopbackHostname(right.hostname);
+}
+
 function resolveHttpRequestBaseUrl(httpBaseUrl: string): string {
+  const currentUrl = new URL(window.location.href);
+  const targetUrl = new URL(httpBaseUrl);
+
+  if (
+    import.meta.env.DEV &&
+    isLoopbackHostname(currentUrl.hostname) &&
+    isLoopbackHostname(targetUrl.hostname)
+  ) {
+    return currentUrl.origin;
+  }
+
   const configuredDevServerUrl = import.meta.env.VITE_DEV_SERVER_URL?.trim();
   if (!configuredDevServerUrl) {
     return httpBaseUrl;
   }
 
-  const currentUrl = new URL(window.location.href);
-  const targetUrl = new URL(httpBaseUrl);
   const devServerUrl = new URL(configuredDevServerUrl, currentUrl.origin);
 
   const isCurrentOriginDevServer =
     (currentUrl.protocol === "http:" || currentUrl.protocol === "https:") &&
-    currentUrl.origin === devServerUrl.origin;
+    loopbackHttpOriginsMatch(currentUrl, devServerUrl);
 
   if (
     !isCurrentOriginDevServer ||
-    currentUrl.origin === targetUrl.origin ||
+    loopbackHttpOriginsMatch(currentUrl, targetUrl) ||
     !isLoopbackHostname(currentUrl.hostname) ||
     !isLoopbackHostname(targetUrl.hostname)
   ) {

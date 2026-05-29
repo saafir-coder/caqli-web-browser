@@ -1,4 +1,4 @@
-import { Outlet, createFileRoute, redirect } from "@tanstack/react-router";
+import { createFileRoute, Outlet, redirect } from "@tanstack/react-router";
 import { useEffect } from "react";
 
 import { useCommandPaletteStore } from "../commandPaletteStore";
@@ -14,6 +14,8 @@ import { useThreadSelectionStore } from "../threadSelectionStore";
 import { resolveSidebarNewThreadEnvMode } from "~/components/Sidebar.logic";
 import { useSettings } from "~/hooks/useSettings";
 import { useServerKeybindings } from "~/rpc/serverState";
+import { isHostedAuthConfigured } from "../hosted/config";
+import { resolveHostedChatRedirect } from "../hosted/hostedAppGate";
 
 function ChatRouteGlobalShortcuts() {
   const clearSelection = useThreadSelectionStore((state) => state.clearSelection);
@@ -109,7 +111,15 @@ function ChatRouteLayout() {
 export const Route = createFileRoute("/_chat")({
   beforeLoad: async ({ context }) => {
     if (context.authGateState.status !== "authenticated") {
-      throw redirect({ to: "/pair", replace: true });
+      throw redirect({
+        to: isHostedAuthConfigured() ? "/welcome" : "/pair",
+        replace: true,
+      });
+    }
+
+    const hostedRedirect = await resolveHostedChatRedirect();
+    if (hostedRedirect) {
+      throw redirect(hostedRedirect);
     }
   },
   component: ChatRouteLayout,

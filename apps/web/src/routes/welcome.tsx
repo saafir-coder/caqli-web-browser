@@ -1,0 +1,126 @@
+import { createFileRoute, redirect, useNavigate } from "@tanstack/react-router";
+import { useState } from "react";
+
+import { assertEmailMayRequestMagicLink } from "../hosted/checkHostedAccess";
+import { HostedAuthPageChrome } from "../hosted/HostedAuthPageChrome";
+import {
+  isHostedControlPlaneConfigured,
+  isSupabaseHostedAuthConfigured,
+} from "../hosted/config";
+import { requestHostedMagicLink } from "../hosted/hostedClient";
+import { resolveHostedWelcomeRedirect } from "../hosted/hostedAppGate";
+import {
+  HOSTED_DEV_MAGIC_LINK_KEY,
+  HOSTED_PENDING_EMAIL_KEY,
+} from "../hosted/onboardingUi";
+import { getSupabaseBrowserClient } from "../hosted/supabaseClient";
+
+export const Route = createFileRoute("/welcome")({
+  beforeLoad: async () => {
+    const hostedRedirect = await resolveHostedWelcomeRedirect();
+    if (hostedRedirect) {
+      throw redirect(hostedRedirect);
+    }
+  },
+  component: WelcomePage,
+});
+
+function WelcomePage() {
+  const navigate = useNavigate();
+  const [email, setEmail] = useState("");
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  async function onSubmit(e: React.FormEvent) {
+    e.preventDefault();
+    setError(null);
+    const trimmed = email.trim();
+    if (!trimmed) {
+      setError("Enter your email.");
+      return;
+    }
+    const access = await assertEmailMayRequestMagicLink(trimmed);
+    if (!access.ok) {
+      setError(access.userMessage);
+      return;
+    }
+    setBusy(true);
+    try {
+      const redirectTo = `${window.location.origin}/auth/callback`;
+      if (isHostedControlPlaneConfigured()) {
+        const result = await requestHostedMagicLink({ email: trimmed, redirectTo });
+        try {
+          sessionStorage.setItem(HOSTED_PENDING_EMAIL_KEY, trimmed);
+          if (import.meta.env.DEV && result.devMagicLink) {
+            sessionStorage.setItem(HOSTED_DEV_MAGIC_LINK_KEY, result.devMagicLink);
+            console.info("[hosted auth] dev magic link:", result.devMagicLink);
+          } else {
+            sessionStorage.removeItem(HOSTED_DEV_MAGIC_LINK_KEY);
+          }
+        } catch {
+          // sessionStorage unavailable — dev link still logged server-side
+        }
+        void navigate({ to: "/check-email", replace: false });
+        return;
+      }
+      try {
+        sessionStorage.setItem(HOSTED_PENDING_EMAIL_KEY, trimmed);
+        sessionStorage.removeItem(HOSTED_DEV_MAGIC_LINK_KEY);
+      } catch {
+        // ignore
+      }
+      if (!isSupabaseHostedAuthConfigured()) {
+        setError("Hosted sign-in is not configured.");
+        return;
+      }
+      const supabase = getSupabaseBrowserClient();
+      const { error: signErr } = await supabase.auth.signInWithOtp({
+        email: trimmed,
+        options: { emailRedirectTo: redirectTo },
+      });
+      if (signErr) {
+        if (import.meta.env.DEV) {
+          console.error("[hosted auth] signInWithOtp failed", signErr);
+        }
+        setError(signErr.message);
+        return;
+      }
+      void navigate({ to: "/check-email", replace: false });
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Something went wrong.");
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  return (
+    <HostedAuthPageChrome title="Caqli">
+      <p className="text-base leading-relaxed text-[#9CA3AF]">
+        Build with agents in a focused workspace. Enter your email—we&apos;ll send a magic link.
+        Works for new and returning accounts.
+      </p>
+      <form onSubmit={(e) => void onSubmit(e)} className="space-y-4">
+        <label className="block space-y-2">
+          <span className="text-xs font-medium tracking-wide text-[#9CA3AF] uppercase">Email</span>
+          <input
+            type="email"
+            name="email"
+            autoComplete="email"
+            value={email}
+            onChange={(ev) => setEmail(ev.target.value)}
+            className="w-full rounded border border-[#333333] bg-black px-3 py-2.5 text-white outline-none focus:border-white"
+            placeholder="you@company.com"
+          />
+        </label>
+        {error ? <p className="text-sm text-red-400">{error}</p> : null}
+        <button
+          type="submit"
+          disabled={busy}
+          className="w-full rounded border border-[#333333] bg-[#2B2B2B] px-4 py-3 text-sm font-medium text-white hover:bg-[#3D3D3D] disabled:opacity-50"
+        >
+          {busy ? "Sending…" : "Continue"}
+        </button>
+      </form>
+    </HostedAuthPageChrome>
+  );
+}

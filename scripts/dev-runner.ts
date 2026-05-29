@@ -1,6 +1,9 @@
 #!/usr/bin/env node
 
+import { existsSync, readFileSync } from "node:fs";
 import { homedir } from "node:os";
+import { dirname, join } from "node:path";
+import { fileURLToPath } from "node:url";
 
 import * as NodeRuntime from "@effect/platform-node/NodeRuntime";
 import * as NodeServices from "@effect/platform-node/NodeServices";
@@ -15,6 +18,73 @@ const MAX_HASH_OFFSET = 3000;
 const MAX_PORT = 65535;
 const DESKTOP_DEV_LOOPBACK_HOST = "127.0.0.1";
 const DEV_PORT_PROBE_HOSTS = ["127.0.0.1", "0.0.0.0", "::1", "::"] as const;
+
+const WEB_ENV_LOCAL_PATH = join(
+  dirname(fileURLToPath(import.meta.url)),
+  "../apps/web/.env.local",
+);
+
+export function parseDotEnvLines(content: string): Record<string, string> {
+  const output: Record<string, string> = {};
+  for (const line of content.split("\n")) {
+    const trimmed = line.trim();
+    if (!trimmed || trimmed.startsWith("#")) {
+      continue;
+    }
+    const separator = trimmed.indexOf("=");
+    if (separator === -1) {
+      continue;
+    }
+    const key = trimmed.slice(0, separator).trim();
+    let value = trimmed.slice(separator + 1).trim();
+    if (
+      (value.startsWith('"') && value.endsWith('"')) ||
+      (value.startsWith("'") && value.endsWith("'"))
+    ) {
+      value = value.slice(1, -1);
+    }
+    output[key] = value;
+  }
+  return output;
+}
+
+/** Merge apps/web/.env.local into the dev child env (Vite reads it; the server process does not). */
+export function mergeWebEnvLocalIntoProcessEnv(
+  baseEnv: NodeJS.ProcessEnv,
+): NodeJS.ProcessEnv {
+  if (!existsSync(WEB_ENV_LOCAL_PATH)) {
+    syncHostedServerEnvFromWeb(baseEnv);
+    return baseEnv;
+  }
+
+  const parsed = parseDotEnvLines(readFileSync(WEB_ENV_LOCAL_PATH, "utf8"));
+  const merged: NodeJS.ProcessEnv = { ...baseEnv };
+  for (const [key, value] of Object.entries(parsed)) {
+    if (!merged[key]?.trim()) {
+      merged[key] = value;
+    }
+  }
+  syncHostedServerEnvFromWeb(merged);
+  return merged;
+}
+
+/** Mirror web hosted allowlist into CAQLI_* so apps/server enforces the same list in `bun run dev`. */
+export function syncHostedServerEnvFromWeb(env: NodeJS.ProcessEnv): void {
+  const accessMode = env.VITE_HOSTED_ACCESS_MODE?.trim();
+  const allowlist = env.VITE_HOSTED_ALLOWLIST_EMAILS?.trim();
+  if (accessMode && !env.CAQLI_HOSTED_ACCESS_MODE?.trim()) {
+    env.CAQLI_HOSTED_ACCESS_MODE = accessMode;
+  }
+  if (allowlist && !env.CAQLI_HOSTED_ALLOWLIST_EMAILS?.trim()) {
+    env.CAQLI_HOSTED_ALLOWLIST_EMAILS = allowlist;
+  }
+  if (!env.CAQLI_HOSTED_MAGIC_LINK_SECRET?.trim()) {
+    env.CAQLI_HOSTED_MAGIC_LINK_SECRET = "local-dev-secret";
+  }
+  if (!env.CAQLI_HOSTED_MAGIC_LINK_DEV_EXPOSE?.trim()) {
+    env.CAQLI_HOSTED_MAGIC_LINK_DEV_EXPOSE = "true";
+  }
+}
 
 export const DEFAULT_T3_HOME = Effect.map(Effect.service(Path.Path), (path) =>
   path.join(homedir(), ".t3"),
@@ -405,7 +475,7 @@ export function runDevRunnerWithInput(input: DevRunnerCliInput) {
 
     const env = yield* createDevRunnerEnv({
       mode: input.mode,
-      baseEnv: process.env,
+      baseEnv: mergeWebEnvLocalIntoProcessEnv({ ...process.env }),
       serverOffset,
       webOffset,
       t3Home: input.t3Home,

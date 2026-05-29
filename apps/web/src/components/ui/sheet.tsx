@@ -59,6 +59,8 @@ function SheetViewport({
 
 function SheetPopup({
   className,
+  backdropClassName,
+  viewportClassName,
   children,
   showCloseButton = true,
   keepMounted = false,
@@ -70,11 +72,13 @@ function SheetPopup({
   keepMounted?: boolean;
   side?: "right" | "left" | "top" | "bottom";
   variant?: "default" | "inset";
+  backdropClassName?: string;
+  viewportClassName?: string;
 }) {
   return (
     <SheetPortal keepMounted={keepMounted}>
-      <SheetBackdrop />
-      <SheetViewport side={side} variant={variant}>
+      <SheetBackdrop className={backdropClassName} />
+      <SheetViewport side={side} variant={variant} className={viewportClassName}>
         <SheetPrimitive.Popup
           className={cn(
             "relative flex max-h-full min-h-0 w-full min-w-0 flex-col bg-popover not-dark:bg-clip-padding text-popover-foreground shadow-lg/5 transition-[opacity,translate] duration-200 ease-in-out will-change-transform before:pointer-events-none before:absolute before:inset-0 before:shadow-[0_1px_--theme(--color-black/4%)] data-ending-style:opacity-0 data-starting-style:opacity-0 max-sm:before:hidden dark:before:shadow-[0_-1px_--theme(--color-white/6%)]",

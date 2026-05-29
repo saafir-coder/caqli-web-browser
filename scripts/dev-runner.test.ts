@@ -8,8 +8,10 @@ import {
   checkPortAvailabilityOnHosts,
   createDevRunnerEnv,
   findFirstAvailableOffset,
+  mergeWebEnvLocalIntoProcessEnv,
   resolveModePortOffsets,
   resolveOffset,
+  syncHostedServerEnvFromWeb,
 } from "./dev-runner.ts";
 
 it.layer(NodeServices.layer)("dev-runner", (it) => {
@@ -286,6 +288,32 @@ it.layer(NodeServices.layer)("dev-runner", (it) => {
           [13_773, "0.0.0.0"],
           [13_773, "::"],
         ]);
+      }),
+    );
+  });
+
+  describe("syncHostedServerEnvFromWeb", () => {
+    it.effect("mirrors VITE hosted allowlist into CAQLI server env", () =>
+      Effect.sync(() => {
+        const env: NodeJS.ProcessEnv = {
+          VITE_HOSTED_ACCESS_MODE: "invite",
+          VITE_HOSTED_ALLOWLIST_EMAILS: "a@example.com",
+        };
+        syncHostedServerEnvFromWeb(env);
+        assert.equal(env.CAQLI_HOSTED_ACCESS_MODE, "invite");
+        assert.equal(env.CAQLI_HOSTED_ALLOWLIST_EMAILS, "a@example.com");
+        assert.equal(env.CAQLI_HOSTED_MAGIC_LINK_DEV_EXPOSE, "true");
+      }),
+    );
+  });
+
+  describe("mergeWebEnvLocalIntoProcessEnv", () => {
+    it.effect("loads apps/web/.env.local when present", () =>
+      Effect.sync(() => {
+        const merged = mergeWebEnvLocalIntoProcessEnv({});
+        assert.equal(merged.VITE_HOSTED_ACCESS_MODE, "invite");
+        assert.ok(merged.VITE_HOSTED_ALLOWLIST_EMAILS?.includes("abdilahiahmed5098@gmail.com"));
+        assert.equal(merged.CAQLI_HOSTED_ALLOWLIST_EMAILS, merged.VITE_HOSTED_ALLOWLIST_EMAILS);
       }),
     );
   });

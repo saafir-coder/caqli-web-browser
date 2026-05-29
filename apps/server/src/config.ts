@@ -8,7 +8,19 @@
  */
 import { Effect, FileSystem, Layer, LogLevel, Path, Schema, Context } from "effect";
 
+import { parseAllowlistEmails, type HostedAccessMode } from "./hosted/accessAllowlist.ts";
+
 export const DEFAULT_PORT = 3773;
+
+export interface HostedControlPlaneConfig {
+  readonly enabled: boolean;
+  readonly accessMode: HostedAccessMode;
+  readonly allowlistEmails: ReadonlySet<string>;
+  readonly magicLinkSecret: string;
+  readonly magicLinkDevExpose: boolean;
+  /** HTTPS origin for magic-link redirects in production (e.g. https://app.example.com). */
+  readonly publicOrigin: string | undefined;
+}
 
 export const RuntimeMode = Schema.Literals(["web", "desktop"]);
 export type RuntimeMode = typeof RuntimeMode.Type;
@@ -65,6 +77,31 @@ export interface ServerConfigShape extends ServerDerivedPaths {
   readonly desktopBootstrapToken: string | undefined;
   readonly autoBootstrapProjectFromCwd: boolean;
   readonly logWebSocketEvents: boolean;
+  readonly hosted: HostedControlPlaneConfig;
+}
+
+export function resolveHostedControlPlaneConfig(input: {
+  readonly mode: RuntimeMode;
+  readonly accessMode: HostedAccessMode;
+  readonly allowlistRaw: string | undefined;
+  readonly magicLinkSecret: string | undefined;
+  readonly magicLinkDevExpose: boolean;
+  readonly publicOrigin: string | undefined;
+}): HostedControlPlaneConfig {
+  const enabled = input.mode === "web";
+  const configuredSecret = input.magicLinkSecret?.trim() ?? "";
+  const magicLinkSecret =
+    configuredSecret ||
+    (enabled && input.magicLinkDevExpose ? "caqli-hosted-dev-magic-link-secret-change-me" : "");
+
+  return {
+    enabled,
+    accessMode: input.accessMode,
+    allowlistEmails: parseAllowlistEmails(input.allowlistRaw),
+    magicLinkSecret,
+    magicLinkDevExpose: input.magicLinkDevExpose,
+    publicOrigin: input.publicOrigin?.trim() || undefined,
+  };
 }
 
 export const deriveServerPaths = Effect.fn(function* (
@@ -165,6 +202,14 @@ export class ServerConfig extends Context.Service<ServerConfig, ServerConfigShap
           devUrl,
           noBrowser: false,
           startupPresentation: "browser",
+          hosted: resolveHostedControlPlaneConfig({
+            mode: "web",
+            accessMode: "invite",
+            allowlistRaw: undefined,
+            magicLinkSecret: "test-hosted-magic-link-secret",
+            magicLinkDevExpose: true,
+            publicOrigin: undefined,
+          }),
         } satisfies ServerConfigShape;
       }),
     );

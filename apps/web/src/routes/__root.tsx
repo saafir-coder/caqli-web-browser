@@ -44,15 +44,28 @@ import {
   resolveInitialServerAuthGateState,
   updatePrimaryEnvironmentDescriptor,
 } from "../environments/primary";
+import { isHostedAuthConfigured, isHostedT3DeferredPath } from "../hosted/config";
+import { HostedAppChrome } from "../hosted/workspace/HostedAppChrome";
+import { isHostedMinimalChromePath } from "../hosted/hostedLayoutPaths";
 
 export const Route = createRootRouteWithContext<{
   queryClient: QueryClient;
 }>()({
-  beforeLoad: async () => {
-    const [, authGateState] = await Promise.all([
-      ensurePrimaryEnvironmentReady(),
-      resolveInitialServerAuthGateState(),
-    ]);
+  beforeLoad: async ({ location }) => {
+    const pathname = location.pathname;
+    const hostedDeferT3 = isHostedAuthConfigured() && isHostedT3DeferredPath(pathname);
+
+    const authGateState = await resolveInitialServerAuthGateState({
+      publicHostedEntry: hostedDeferT3,
+    });
+
+    const shouldBootstrapPrimaryEnvironment =
+      !isHostedAuthConfigured() || !hostedDeferT3 || authGateState.status === "authenticated";
+
+    if (shouldBootstrapPrimaryEnvironment) {
+      await ensurePrimaryEnvironmentReady();
+    }
+
     return {
       authGateState,
     };
@@ -77,7 +90,7 @@ function RootRouteView() {
     };
   }, [pathname]);
 
-  if (pathname === "/pair") {
+  if (isHostedMinimalChromePath(pathname)) {
     return <Outlet />;
   }
 
@@ -96,7 +109,13 @@ function RootRouteView() {
         <WebSocketConnectionSurface>
           <CommandPalette>
             <AppSidebarLayout>
-              <Outlet />
+              {isHostedAuthConfigured() ? (
+                <HostedAppChrome>
+                  <Outlet />
+                </HostedAppChrome>
+              ) : (
+                <Outlet />
+              )}
             </AppSidebarLayout>
           </CommandPalette>
         </WebSocketConnectionSurface>

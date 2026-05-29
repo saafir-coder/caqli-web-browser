@@ -35,12 +35,14 @@ import {
   DEFAULT_PORT,
   deriveServerPaths,
   ensureServerDirectories,
+  resolveHostedControlPlaneConfig,
   resolveStaticDir,
   ServerConfig,
   RuntimeMode,
   type ServerConfigShape,
   type StartupPresentation,
 } from "./config";
+import type { HostedAccessMode } from "./hosted/accessAllowlist.ts";
 import { readBootstrapEnvelope } from "./bootstrap";
 import { expandHomePath, resolveBaseDir } from "./os-jank";
 import { runServer } from "./server";
@@ -173,6 +175,20 @@ const EnvServerConfig = Config.all({
     Config.option,
     Config.map(Option.getOrUndefined),
   ),
+  hostedAccessMode: Config.schema(
+    Schema.Literals(["open", "invite"] as const),
+    "CAQLI_HOSTED_ACCESS_MODE",
+  ).pipe(Config.withDefault("invite" satisfies HostedAccessMode)),
+  hostedAllowlistEmails: Config.string("CAQLI_HOSTED_ALLOWLIST_EMAILS").pipe(
+    Config.withDefault(""),
+  ),
+  hostedMagicLinkSecret: Config.string("CAQLI_HOSTED_MAGIC_LINK_SECRET").pipe(
+    Config.withDefault(""),
+  ),
+  hostedMagicLinkDevExpose: Config.boolean("CAQLI_HOSTED_MAGIC_LINK_DEV_EXPOSE").pipe(
+    Config.withDefault(false),
+  ),
+  hostedPublicOrigin: Config.string("CAQLI_HOSTED_PUBLIC_ORIGIN").pipe(Config.withDefault("")),
 });
 
 interface CliServerFlags {
@@ -364,6 +380,14 @@ export const resolveServerConfig = (
       desktopBootstrapToken,
       autoBootstrapProjectFromCwd,
       logWebSocketEvents,
+      hosted: resolveHostedControlPlaneConfig({
+        mode,
+        accessMode: env.hostedAccessMode,
+        allowlistRaw: env.hostedAllowlistEmails || undefined,
+        magicLinkSecret: env.hostedMagicLinkSecret || undefined,
+        magicLinkDevExpose: env.hostedMagicLinkDevExpose,
+        publicOrigin: env.hostedPublicOrigin || undefined,
+      }),
     };
 
     return config;
@@ -1105,7 +1129,9 @@ const runServerCommand = (
   Effect.gen(function* () {
     const logLevel = yield* GlobalFlag.LogLevel;
     const config = yield* resolveServerConfig(flags, logLevel, options);
-    return yield* runServer.pipe(Effect.provideService(ServerConfig, config));
+    return yield* (runServer as unknown as Effect.Effect<void, never, ServerConfig>).pipe(
+      Effect.provideService(ServerConfig, config),
+    );
   });
 
 const startCommand = Command.make("start", { ...sharedServerCommandFlags }).pipe(

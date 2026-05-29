@@ -16,7 +16,12 @@ import * as TestConsole from "effect/testing/TestConsole";
 import { Command } from "effect/unstable/cli";
 
 import { cli } from "./cli.ts";
-import { deriveServerPaths, ServerConfig, type ServerConfigShape } from "./config.ts";
+import {
+  deriveServerPaths,
+  resolveHostedControlPlaneConfig,
+  ServerConfig,
+  type ServerConfigShape,
+} from "./config.ts";
 import { OrchestrationEngineService } from "./orchestration/Services/OrchestrationEngine.ts";
 import { ProjectionSnapshotQuery } from "./orchestration/Services/ProjectionSnapshotQuery.ts";
 import { OrchestrationLayerLive } from "./orchestration/runtimeLayer.ts";
@@ -76,6 +81,14 @@ const makeCliTestServerConfig = (baseDir: string) =>
       desktopBootstrapToken: undefined,
       autoBootstrapProjectFromCwd: false,
       logWebSocketEvents: false,
+      hosted: resolveHostedControlPlaneConfig({
+        mode: "web",
+        accessMode: "invite",
+        allowlistRaw: undefined,
+        magicLinkSecret: "test-hosted-magic-link-secret",
+        magicLinkDevExpose: true,
+        publicOrigin: undefined,
+      }),
     } satisfies ServerConfigShape;
   });
 

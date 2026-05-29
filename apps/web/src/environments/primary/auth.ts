@@ -17,6 +17,13 @@ import {
 
 import { resolvePrimaryEnvironmentHttpUrl } from "./target";
 import { Data, Predicate } from "effect";
+import {
+  isHostedAuthConfigured,
+  isHostedControlPlaneConfigured,
+  isSupabaseHostedAuthConfigured,
+} from "../../hosted/config";
+import { getHostedSession } from "../../hosted/hostedClient";
+import { getSupabaseBrowserClient } from "../../hosted/supabaseClient";
 
 export class BootstrapHttpError extends Data.TaggedError("BootstrapHttpError")<{
   readonly message: string;
@@ -55,6 +62,13 @@ type ServerAuthGateState =
       auth: AuthSessionState["auth"];
       errorMessage?: string;
     };
+
+const HOSTED_PUBLIC_AUTH_PLACEHOLDER: AuthSessionState["auth"] = {
+  policy: "remote-reachable",
+  bootstrapMethods: ["one-time-token"],
+  sessionMethods: ["browser-session-cookie"],
+  sessionCookieName: "t3_session",
+};
 
 let bootstrapPromise: Promise<ServerAuthGateState> | null = null;
 let resolvedAuthenticatedGateState: ServerAuthGateState | null = null;
@@ -342,9 +356,50 @@ export async function revokeOtherServerClientSessions(): Promise<number> {
   return result.revokedCount ?? 0;
 }
 
-export async function resolveInitialServerAuthGateState(): Promise<ServerAuthGateState> {
+export async function resolveInitialServerAuthGateState(options?: {
+  publicHostedEntry?: boolean;
+}): Promise<ServerAuthGateState> {
   if (resolvedAuthenticatedGateState?.status === "authenticated") {
     return resolvedAuthenticatedGateState;
+  }
+
+  if (isHostedControlPlaneConfigured()) {
+    try {
+      const session = await getHostedSession();
+      if (session.authenticated) {
+        const gate: ServerAuthGateState = { status: "authenticated" };
+        resolvedAuthenticatedGateState = gate;
+        return gate;
+      }
+      if (options?.publicHostedEntry) {
+        return {
+          status: "requires-auth",
+          auth: HOSTED_PUBLIC_AUTH_PLACEHOLDER,
+        };
+      }
+    } catch {
+      // Fall through to pairing bootstrap when the API is unreachable.
+    }
+  } else if (isSupabaseHostedAuthConfigured()) {
+    try {
+      const supabase = getSupabaseBrowserClient();
+      const {
+        data: { session },
+      } = await supabase.auth.getSession();
+      if (session) {
+        const gate: ServerAuthGateState = { status: "authenticated" };
+        resolvedAuthenticatedGateState = gate;
+        return gate;
+      }
+      if (options?.publicHostedEntry) {
+        return {
+          status: "requires-auth",
+          auth: HOSTED_PUBLIC_AUTH_PLACEHOLDER,
+        };
+      }
+    } catch {
+      // Fall through to server pairing bootstrap (dev) or failed session fetch.
+    }
   }
 
   if (bootstrapPromise) {

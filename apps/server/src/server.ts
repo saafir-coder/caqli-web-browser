@@ -60,7 +60,9 @@ import {
   authSessionRouteLayer,
   authWebSocketTokenRouteLayer,
 } from "./auth/http";
+import { SessionCredentialServiceLive } from "./auth/Layers/SessionCredentialService";
 import { ServerSecretStoreLive } from "./auth/Layers/ServerSecretStore";
+import { AuthSessionRepositoryLive } from "./persistence/Layers/AuthSessions";
 import { ServerAuthLive } from "./auth/Layers/ServerAuth";
 import { OrchestrationLayerLive } from "./orchestration/runtimeLayer";
 import {
@@ -72,6 +74,8 @@ import {
   orchestrationDispatchRouteLayer,
   orchestrationSnapshotRouteLayer,
 } from "./orchestration/http";
+import { HostedControlPlaneLive } from "./hosted/Layers/HostedControlPlane.ts";
+import { hostedRouteLayers } from "./hosted/http.ts";
 
 const PtyAdapterLive = Layer.unwrap(
   Effect.gen(function* () {
@@ -194,6 +198,17 @@ const AuthLayerLive = ServerAuthLive.pipe(
   Layer.provide(ServerSecretStoreLive),
 );
 
+const HostedSessionCredentialStackLive = SessionCredentialServiceLive.pipe(
+  Layer.provideMerge(AuthSessionRepositoryLive),
+  Layer.provideMerge(PersistenceLayerLive),
+  Layer.provide(ServerSecretStoreLive),
+);
+
+const HostedLayerLive = HostedControlPlaneLive.pipe(
+  Layer.provideMerge(PersistenceLayerLive),
+  Layer.provideMerge(HostedSessionCredentialStackLive),
+);
+
 const RuntimeDependenciesLive = ReactorLayerLive.pipe(
   // Core Services
   Layer.provideMerge(CheckpointingLayerLive),
@@ -210,6 +225,7 @@ const RuntimeDependenciesLive = ReactorLayerLive.pipe(
   Layer.provideMerge(RepositoryIdentityResolverLive),
   Layer.provideMerge(ServerEnvironmentLive),
   Layer.provideMerge(AuthLayerLive),
+  Layer.provideMerge(HostedLayerLive),
 
   // Misc.
   Layer.provideMerge(AnalyticsServiceLayerLive),
@@ -221,7 +237,7 @@ const RuntimeServicesLive = ServerRuntimeStartupLive.pipe(
   Layer.provideMerge(RuntimeDependenciesLive),
 );
 
-export const makeRoutesLayer = Layer.mergeAll(
+export const makeCoreRoutesLayer = Layer.mergeAll(
   authBearerBootstrapRouteLayer,
   authBootstrapRouteLayer,
   authClientsRevokeOthersRouteLayer,
@@ -240,6 +256,11 @@ export const makeRoutesLayer = Layer.mergeAll(
   serverEnvironmentRouteLayer,
   staticAndDevRouteLayer,
   websocketRpcRouteLayer,
+).pipe(Layer.provide(browserApiCorsLayer));
+
+export const makeRoutesLayer = Layer.mergeAll(
+  makeCoreRoutesLayer,
+  Layer.mergeAll(...hostedRouteLayers),
 ).pipe(Layer.provide(browserApiCorsLayer));
 
 export const makeServerLayer = Layer.unwrap(
